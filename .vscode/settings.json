@@ -1,5 +1,14 @@
 {
 	"files.associations": {
-		"glx.h": "c"
-	}
+		"glx.h": "c",
+		"cmap.h": "c",
+		"stdio.h": "c",
+		"gl.h": "c",
+		"xutil.h": "c",
+		"glext.h": "c",
+		"glxext.h": "c",
+		"stb_image.h": "c"
+	},
+	"editor.tabSize": 4,
+	"editor.useTabStops": false
 }

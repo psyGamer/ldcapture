@@ -26,22 +26,22 @@
 // 	return p;
 // }
 
-static void *load_original_function(const char* realName)
-{
-	void *real = dlsym(RTLD_NEXT, realName);
-	if (real == NULL)
-		fprintf(stderr, "Error in dlsym: %s\n", dlerror());
-	return real;
-}
+// static void *load_original_function(const char* realName)
+// {
+// 	void *real = dlsym(RTLD_NEXT, realName);
+// 	if (real == NULL)
+// 		fprintf(stderr, "Error in dlsym: %s\n", dlerror());
+// 	return real;
+// }
 
-static void* (*real_malloc)(size_t) = NULL;
-void *malloc(size_t size)
-{
-	if (real_malloc == NULL) real_malloc = load_original_function("malloc");
+// static void* (*real_malloc)(size_t) = NULL;
+// void *malloc(size_t size)
+// {
+// 	if (real_malloc == NULL) real_malloc = load_original_function("malloc");
 
-	void *p = NULL;
-	fprintf(stderr, "malloc(%zu) = ", size);
-	p = real_malloc(size);
-	fprintf(stderr, "%p\n", p);
-	return p;
-}
+// 	void *p = NULL;
+// 	fprintf(stderr, "malloc(%zu) = ", size);
+// 	p = real_malloc(size);
+// 	fprintf(stderr, "%p\n", p);
+// 	return p;
+// }
