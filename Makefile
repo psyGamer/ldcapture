@@ -4,7 +4,7 @@ OBJ_DIR := obj
 ASSEMBLY := ldcapture
 EXTENSION := .so
 COMPILER_FLAGS := -fPIC
-INCLUDE_FLAGS := -Isrc -Ivendor
+INCLUDE_FLAGS := -Isrc -Ivendor/STC/include
 LINKER_FLAGS := -shared -lm
 DEFINES := 
 

@@ -1,0 +1,3 @@
+[submodule "vendor/STC"]
+	path = vendor/STC
+	url = https://github.com/tylov/STC
