@@ -1,0 +1,1 @@
+static void *load_original_function(const char* realName);
