@@ -1,4 +1,5 @@
 #include "hook.h"
+#include "encoder.h"
 
 #include <stdio.h>
 #include <pthread.h>
@@ -14,9 +15,6 @@
 #define i_tag drawable
 #include <stc/cmap.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
-
 static void captureGLFrame(Display *dpy);
 static void prepareSwap(Display *dpy, GLXDrawable drawable, GLXDrawable *oldDrawable, GLXContext *oldContext);
 static void finishSwap(Display *dpy, GLXDrawable drawable, const GLXDrawable *oldDrawable, const GLXContext *oldContext);
@@ -26,7 +24,8 @@ static bool initialized = false;
 static cmap_drawable contextFromDrawable;
 static bool swapIntervalChecked = false;
 static bool fboChecked = false;
-static unsigned char *captureData = NULL; // TEMP
+
+static encoder_t *encoder;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -40,6 +39,7 @@ static Bool (*orig_glXMakeCurrent)(Display*, GLXDrawable, GLXContext);
 void initVideoOpenGL()
 {
     contextFromDrawable = cmap_drawable_init();
+    encoder = encoder_create(ENCODER_TYPE_PNG);
 
     orig_glXSwapBuffers = load_original_function("glXSwapBuffers");
     orig_glXMakeCurrent = load_original_function("glXMakeCurrent");
@@ -99,14 +99,12 @@ static void captureGLFrame(Display *dpy)
     GLXDrawable drawable = glXGetCurrentDrawable();
     Window window = (Window)drawable;
 
-    if (window == NULL) return;
+    if (!window) return;
 
     XWindowAttributes attr = {};
     XGetWindowAttributes(dpy, window, &attr);
-    // printf("Window size: %d, %d", attr.width, attr.height);
 
-    free(captureData);
-    captureData = malloc(attr.width * attr.height * 3);
+    encoder_resize(encoder, attr.width, attr.height);
 
     pthread_mutex_lock(&mutex);
 
@@ -122,13 +120,17 @@ static void captureGLFrame(Display *dpy)
     glGetIntegerv(GL_READ_BUFFER,(GLint*) &oldReadBuffer);
     glReadBuffer(GL_FRONT);
 
-    glReadPixels(0, 0, attr.width, attr.height, GL_RGB, GL_UNSIGNED_BYTE, captureData);
+    // unsigned char *data = malloc(encoder->width * encoder->height * encoder->channels);
+
+    glReadPixels(0, 0, attr.width, attr.height, GL_RGB, GL_UNSIGNED_BYTE, encoder->data);
+    // memset(encoder->data, attr.width * attr.height * 3, 69);
 
     // GLsizei stride = 3 * width;
     // stride += (stride % 4) ? (4 - stride % 4) : 0;
 
     // stbi_flip_vertically_on_write(true);
     // stbi_write_png("output.png", width, height, 3, captureData, stride);
+    encoder_save_frame(encoder);
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
     glReadBuffer(oldReadBuffer);
