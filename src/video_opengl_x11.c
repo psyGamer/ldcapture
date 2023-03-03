@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -36,7 +37,7 @@ SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),
 
 void init_opengl_x11()
 {
-    encoder = encoder_create(ENCODER_TYPE_PNG);
+    encoder = encoder_create(ENCODER_TYPE_QOI);
 
     LOAD_SYM_HOOK(glXSwapBuffers);
     LOAD_SYM_HOOK(glXGetProcAddressARB);
@@ -68,8 +69,22 @@ static void capture_frame(Display *dpy)
     glGetIntegerv(GL_READ_BUFFER,(GLint*) &oldReadBuffer);
     glReadBuffer(GL_FRONT);
 
-    glReadPixels(0, 0, attr.width, attr.height, GL_RGB, GL_UNSIGNED_BYTE, encoder->data);
+    glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, encoder->data);
     
+    // Flip the image (https://codereview.stackexchange.com/q/29618)
+    const size_t rowStride = attr.width * 4;
+    unsigned char *tempRow = malloc(rowStride);
+    unsigned char *low  = encoder->data;
+    unsigned char *high = encoder->data + (attr.height - 1) * rowStride;
+
+    for (; low < high; low += rowStride, high -= rowStride) {
+        memcpy(tempRow, low, rowStride);
+        memcpy(low, high, rowStride);
+        memcpy(high, tempRow, rowStride);
+    }
+
+    free(tempRow);
+
     encoder_save_frame(encoder);
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);

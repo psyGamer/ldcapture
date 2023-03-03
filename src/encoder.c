@@ -1,30 +1,40 @@
 #include "encoder.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
-
-static void encoder_png_save_frame(encoder_t *encoder);
+#include "encoder_qoi.h"
 
 encoder_t *encoder_create(encoder_type_t type)
 {
     encoder_t *encoder = malloc(sizeof(encoder_t));
     encoder->type = type;
-    encoder->channels = 3; // Currently hardcoded
+    encoder->channels = 4; // Currently hardcoded
     encoder->width = 0;
     encoder->height = 0;
     encoder->data = NULL;
     encoder->frameCount = 0;
+
+    switch (type)
+    {
+    case ENCODER_TYPE_QOI:
+        encoder_qoi_create((encoder_qoi_t *)encoder);
+        break;
+    }
+
     return encoder;
 }
 
 void encoder_destroy(encoder_t *encoder)
 {
+    switch (encoder->type)
+    {
+    case ENCODER_TYPE_QOI:
+        encoder_qoi_destory((encoder_qoi_t *)encoder);
+        break;
+    }
+
     free(encoder->data);
     free(encoder);
 }
@@ -49,29 +59,19 @@ void encoder_resize(encoder_t *encoder, unsigned int width, unsigned int height)
 
 void encoder_save_frame(encoder_t *encoder)
 {
+    if (encoder->frameCount <= 10)
+    {
+        // The first few frames are usually garbage.
+        encoder->frameCount++;
+        return;
+    }
+
     switch (encoder->type)
     {
-    case ENCODER_TYPE_PNG:
-        encoder_png_save_frame(encoder);
+    case ENCODER_TYPE_QOI:
+        encoder_qoi_save_frame((encoder_qoi_t *)encoder);
+        break;
     }
 
     encoder->frameCount++;
-}
-
-static void encoder_png_save_frame(encoder_t *encoder)
-{
-    // Create "frames" directory if doesn't exist
-    struct stat st = {0};
-    if (stat("./frames", &st) == -1) mkdir("./frames", 0700);
-
-    size_t stride = encoder->channels * encoder->width;
-    stride += (stride % 4) ? (4 - stride % 4) : 0;
-
-    char fileName[1024]; // Should be long enough
-    sprintf(fileName, "./frames/%05d.png", encoder->frameCount);
-
-    printf("Writing frame %d: %s...\n", encoder->frameCount, fileName);
-
-    stbi_flip_vertically_on_write(true);
-    stbi_write_png(fileName, encoder->width, encoder->height, encoder->channels, encoder->data, stride);
 }

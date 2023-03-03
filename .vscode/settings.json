@@ -23,7 +23,16 @@
         "stdbool.h": "c",
         "video_opengl.h": "c",
         "functional": "c",
-        "hook.h": "c"
+        "hook.h": "c",
+        "hash_map": "c",
+        "deque": "c",
+        "forward_list": "c",
+        "list": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "initializer_list": "c",
+        "valarray": "c"
     },
     
     "editor.tabSize": 4,
