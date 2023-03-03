@@ -1,1 +1,3 @@
-void *load_original_function(const char* realName);
+#pragma once
+
+void *load_orig_function(const char *origName);

@@ -5,8 +5,8 @@ ASSEMBLY := ldcapture
 EXTENSION := .so
 COMPILER_FLAGS := -fPIC
 INCLUDE_FLAGS := -Isrc -Ivendor -Ivendor/STC/include
-LINKER_FLAGS := -shared -lm
-DEFINES := 
+LINKER_FLAGS := -shared -lm -ldl
+DEFINES := -DPLAT_LINUX
 
 SRC_FILES := $(shell find src -name *.c -or -name *.cpp)	# .c and .cpp files
 DIRECTORIES := $(shell find src -type d)					# directories with .h files
@@ -14,13 +14,13 @@ OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)					# compiled .o objects
 
 all: scaffold compile link
 
-debug: COMPILER_FLAGS += -g -O0 -fsanitize=address
-debug: LINKER_FLAGS += -fsanitize=address -static-libsan
+debug: COMPILER_FLAGS += -g -O0
+debug: LINKER_FLAGS += 
 debug: DEFINES += -D_GLIBCXX_DEBUG -D_DEBUG
-debug: EXTENSION := -debug
+debug: EXTENSION := -debug.so
 debug: all
 release: COMPILER_FLAGS += -O3
-release: EXTENSION := -release
+release: EXTENSION := -release.so
 release: all
 
 .PHONY: scaffold
@@ -32,7 +32,7 @@ scaffold: # create build directory
 .PHONY: link
 link: scaffold $(OBJ_FILES) # link
 	@echo Linking $(ASSEMBLY)...
-	clang++ $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
+	clang $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 
 .PHONY: compile
 compile: #compile .c and .cpp files

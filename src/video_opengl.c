@@ -2,6 +2,7 @@
 #include "encoder.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
 #define GL_GLEXT_PROTOTYPES
@@ -31,25 +32,27 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void (*orig_glXSwapBuffers)(Display*, GLXDrawable);
 static Bool (*orig_glXMakeCurrent)(Display*, GLXDrawable, GLXContext);
+static __GLXextFuncPtr (*orig_glXGetProcAddressARB)(const GLubyte *);
 
 // static void (*glBindFramebufferEXT)(GLenum target, GLuint framebuffer);
 // static int (*glXSwapIntervalMESA)(unsigned int);
 // static int (*glXGetSwapIntervalMESA)(void);
 
-void initVideoOpenGL()
+static void init_video_opengl()
 {
     contextFromDrawable = cmap_drawable_init();
     encoder = encoder_create(ENCODER_TYPE_PNG);
 
-    orig_glXSwapBuffers = load_original_function("glXSwapBuffers");
-    orig_glXMakeCurrent = load_original_function("glXMakeCurrent");
+    orig_glXSwapBuffers = load_orig_function("glXSwapBuffers");
+    orig_glXMakeCurrent = load_orig_function("glXMakeCurrent");
+    orig_glXGetProcAddressARB = load_orig_function("glXGetProcAddressARB");
 
     initialized = true;
 }
 
-void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
+static void hook_glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 {
-    if (!initialized) initVideoOpenGL();
+    if (!initialized) init_video_opengl();
 
     GLXDrawable oldDrawable;
     GLXContext oldContext;
@@ -61,9 +64,9 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     orig_glXSwapBuffers(dpy, drawable);
 }
 
-Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext context)
+static Bool hook_glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext context)
 {
-    if (!initialized) initVideoOpenGL();
+    if (!initialized) init_video_opengl();
 
     Bool result = orig_glXMakeCurrent(dpy, drawable, context);
 
@@ -92,6 +95,26 @@ Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext context)
     }
 
     return result;
+}
+
+__GLXextFuncPtr hook_glXGetProcAddressARB(const GLubyte *procName)
+{
+    if (!initialized) init_video_opengl();
+
+    printf("glXGetProcAddressARB: %s\n", procName);
+
+    if (strcmp(procName, "glXSwapBuffers") == 0)
+    {
+        printf("HOOKED glXSwapBuffers\n");
+        return hook_glXSwapBuffers;
+    }
+    if (strcmp(procName, "glXMakeCurrent") == 0)
+    {
+        printf("HOOKED glXMakeCurrent\n");
+        return hook_glXMakeCurrent;
+    }
+
+    return orig_glXGetProcAddressARB(procName);
 }
 
 static void captureGLFrame(Display *dpy)
@@ -131,6 +154,7 @@ static void captureGLFrame(Display *dpy)
     // stbi_flip_vertically_on_write(true);
     // stbi_write_png("output.png", width, height, 3, captureData, stride);
     encoder_save_frame(encoder);
+    // printf("Frame done!\n");
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
     glReadBuffer(oldReadBuffer);

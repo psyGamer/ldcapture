@@ -1,14 +1,30 @@
 {
-	"files.associations": {
-		"glx.h": "c",
-		"cmap.h": "c",
-		"stdio.h": "c",
-		"gl.h": "c",
-		"xutil.h": "c",
-		"glext.h": "c",
-		"glxext.h": "c",
-		"stb_image.h": "c"
-	},
-	"editor.tabSize": 4,
-	"editor.useTabStops": false
+    "files.associations": {
+        "glx.h": "c",
+        "cmap.h": "c",
+        "stdio.h": "c",
+        "gl.h": "c",
+        "xutil.h": "c",
+        "glext.h": "c",
+        "glxext.h": "c",
+        "stb_image.h": "c",
+        "encoder.h": "c",
+        "stb_image_write.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "unistd.h": "c",
+        "dlfcn.h": "c",
+        "dlsym.h": "c",
+        "string.h": "c",
+        "*.cl": "c",
+        "typeindex": "c",
+        "typeinfo": "c",
+        "stdbool.h": "c",
+        "video_opengl.h": "c"
+    },
+    
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+
 }
