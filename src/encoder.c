@@ -74,5 +74,4 @@ static void encoder_png_save_frame(encoder_t *encoder)
 
     stbi_flip_vertically_on_write(true);
     stbi_write_png(fileName, encoder->width, encoder->height, encoder->channels, encoder->data, stride);
-    // stbi_write_png("output.png", encoder->width, encoder->height, encoder->channels, encoder->data, stride);
 }

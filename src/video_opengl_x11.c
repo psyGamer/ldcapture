@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <string.h>
+#include <pthread.h>
+
+#define GL_GLEXT_PROTOTYPES
+#define GLX_GLXEXT_PROTOTYPES
+#include <GL/gl.h>
+#include <GL/glx.h>
+#include <GL/glext.h>
+
+#include "hook.h"
+#include "encoder.h"
+
+static void capture_frame(Display *dpy);
+
+static encoder_t *encoder;
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
+{
+    capture_frame(dpy);
+    orig_glXSwapBuffers(dpy, drawable);
+})
+
+SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),
+{
+    if (strcmp((const char *)procName, "glXSwapBuffers") == 0)
+    {
+        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXSwapBuffers");
+        return (__GLXextFuncPtr)glXSwapBuffers;
+    }
+
+    return orig_glXGetProcAddressARB(procName);
+})
+
+void init_opengl_x11()
+{
+    encoder = encoder_create(ENCODER_TYPE_PNG);
+
+    LOAD_SYM_HOOK(glXSwapBuffers);
+    LOAD_SYM_HOOK(glXGetProcAddressARB);
+}
+
+static void capture_frame(Display *dpy)
+{
+    GLXDrawable drawable = glXGetCurrentDrawable();
+    Window window = (Window)drawable;
+
+    if (!window) return;
+
+    XWindowAttributes attr = {0};
+    XGetWindowAttributes(dpy, window, &attr);
+
+    encoder_resize(encoder, attr.width, attr.height);
+
+    pthread_mutex_lock(&mutex);
+
+    if (glXGetSwapIntervalMESA() > 0)
+        glXSwapIntervalMESA(0);
+
+    GLuint oldFramebuffer;
+    GLenum oldReadBuffer;
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, (GLint*) &oldFramebuffer);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+    glGetIntegerv(GL_READ_BUFFER,(GLint*) &oldReadBuffer);
+    glReadBuffer(GL_FRONT);
+
+    glReadPixels(0, 0, attr.width, attr.height, GL_RGB, GL_UNSIGNED_BYTE, encoder->data);
+    
+    encoder_save_frame(encoder);
+
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
+    glReadBuffer(oldReadBuffer);
+
+    pthread_mutex_unlock(&mutex);
+}

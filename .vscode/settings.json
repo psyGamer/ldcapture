@@ -21,7 +21,9 @@
         "typeindex": "c",
         "typeinfo": "c",
         "stdbool.h": "c",
-        "video_opengl.h": "c"
+        "video_opengl.h": "c",
+        "functional": "c",
+        "hook.h": "c"
     },
     
     "editor.tabSize": 4,
