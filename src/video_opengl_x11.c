@@ -11,6 +11,7 @@
 
 #include "hook.h"
 #include "encoder.h"
+#include "timing.h"
 
 static void capture_frame(Display *dpy);
 
@@ -20,8 +21,11 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
 {
+    if (!timing_is_fixed_fps()) timing_start_fixed_fps();
+
     capture_frame(dpy);
     orig_glXSwapBuffers(dpy, drawable);
+    timing_next_frame();
 })
 
 SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),

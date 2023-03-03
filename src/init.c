@@ -10,5 +10,7 @@ void init_ldcapture()
 
     init_opengl_x11();
 
+    init_timing_linux();
+
     initialized = true;
 }
