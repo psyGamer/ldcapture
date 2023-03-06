@@ -1,3 +1,6 @@
+CC = clang
+CXX = clang++
+
 BUILD_DIR := bin
 OBJ_DIR := obj
 
@@ -5,7 +8,7 @@ ASSEMBLY := ldcapture
 EXTENSION := .so
 COMPILER_FLAGS := -fPIC
 INCLUDE_FLAGS := -Isrc -Ivendor -Ivendor/STC/include
-LINKER_FLAGS := -shared -lm -ldl
+LINKER_FLAGS := -shared -lm -ldl -lpulse
 DEFINES := -DPLAT_LINUX
 
 SRC_FILES := $(shell find src -name *.c -or -name *.cpp)	# .c and .cpp files
@@ -32,7 +35,7 @@ scaffold: # create build directory
 .PHONY: link
 link: scaffold $(OBJ_FILES) # link
 	@echo Linking $(ASSEMBLY)...
-	clang $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
+	$(CC) $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 
 .PHONY: compile
 compile: #compile .c and .cpp files
@@ -45,8 +48,8 @@ clean: # clean build directory
 
 $(OBJ_DIR)/%.c.o: %.c # compile .c to .o object
 	@echo   $<...
-	clang -std=c17 $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
+	$(CC) -std=c17 $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 
 $(OBJ_DIR)/%.cpp.o: %.cpp # compile .cpp to .o object
 	@echo   $<...
-	clang++ -std=c++17 $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
+	$(CXX) -std=c++17 $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)

@@ -32,7 +32,19 @@
         "unordered_set": "c",
         "vector": "c",
         "initializer_list": "c",
-        "valarray": "c"
+        "valarray": "c",
+        "pthread.h": "c",
+        "thread-mainloop.h": "c",
+        "pulse_wrapper.h": "c",
+        "stream.h": "c",
+        "inttypes.h": "c",
+        "stdint.h": "c",
+        "tuple": "c",
+        "context.h": "c",
+        "shared_mutex": "c",
+        "stdlib.h": "c",
+        "signal.h": "c",
+        "sigaction.h": "c"
     },
     
     "editor.tabSize": 4,
