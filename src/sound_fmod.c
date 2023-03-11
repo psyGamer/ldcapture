@@ -2,7 +2,7 @@
 
 #include <pthread.h>
 
-#include <fmod_studio_common.h>
+#include <fmod_common.h>
 
 #include "hook.h"
 #include "timing.h"
@@ -72,6 +72,7 @@ FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INI
         fn_FMOD_System_GetMasterChannelGroup == NULL ||
         fn_FMOD_ChannelGroup_AddDSP == NULL ||
         fn_FMOD_ChannelGroup_RemoveDSP == NULL ||
+        fn_FMOD_ChannelGroup_SetPaused == NULL ||
         fn_FMOD_DSP_Release == NULL) load_symbols();
 
     FMOD_DSP_DESCRIPTION desc = { 0 };
@@ -95,8 +96,8 @@ FMOD_RESULT hook_FMOD_System_release(FMOD_SYSTEM *system)
 
     if (result != FMOD_OK) return result;
 
-    FMOD_ChannelGroup_RemoveDSP(master_group, dsp);
-    FMOD_DSP_Release(dsp);
+    fn_FMOD_ChannelGroup_RemoveDSP(master_group, dsp);
+    fn_FMOD_DSP_Release(dsp);
 
     return result;
 }
