@@ -52,7 +52,10 @@
         "time.h": "c",
         "timing.h": "c",
         "errno.h": "c",
-        "init.h": "c"
+        "init.h": "c",
+        "encoder_qoi.h": "c",
+        "cstdlib": "c",
+        "system_error": "c"
     },
     "C_Cpp.default.defines": ["PLAT_LINUX"],
     

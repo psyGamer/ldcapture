@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "base.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -77,7 +79,7 @@ void pulse_wait();
  *
  * If wait_for_accept is 0 the function returns and the data is freed.
  */
-void pulse_signal(int wait_for_accept);
+void pulse_signal(i32 wait_for_accept);
 
 /**
  * Signal the waiting callback to return

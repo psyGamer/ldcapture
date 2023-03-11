@@ -1,20 +1,19 @@
 #pragma once
 
-#include <stdio.h>
-
+#include "base.h"
 #include "encoder.h"
 
 typedef struct encoder_qoi_t
 {
     encoder_type_t type;
 
-    unsigned int channels;
-    unsigned int width, height;
-    unsigned char *data;
+    u32 channels;
+    u32 width, height;
+    u8 *data;
 
-    unsigned int frameCount;
+    u32 frame_count;
 
-    FILE *outFile;
+    FILE *out_file;
 } encoder_qoi_t;
 
 void encoder_qoi_create(encoder_qoi_t *encoder);

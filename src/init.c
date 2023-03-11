@@ -1,14 +1,12 @@
 #include "init.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
 static bool initialized = false;
 
 void init_ldcapture()
 {
     if (initialized) return;
+
+    TRACE("Initializing...");
 
     init_video_opengl_x11();
 
@@ -20,6 +18,8 @@ void init_ldcapture()
 
     atexit(shutdown_ldcapture);
 
+    TRACE("Initialized");
+
     initialized = true;
 }
 
@@ -27,7 +27,11 @@ void shutdown_ldcapture()
 {
     if (!initialized) return;
 
+    TRACE("Shutting down...");
+
     shutdown_soundsys_fmod5();
+
+    TRACE("Shut down");
 
     initialized = false;
 }

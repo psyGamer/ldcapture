@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
+#include "base.h"
 
 void init_ldcapture();
 bool is_initialized_ldcapture();

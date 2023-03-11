@@ -1,6 +1,6 @@
 #include "math.h"
 
-unsigned int math_mul_div(unsigned int a, unsigned int b, unsigned int c)
+u32 math_mul_div(u32 a, u32 b, u32 c)
 {
     #ifdef _M_IX86
         __asm
@@ -12,6 +12,6 @@ unsigned int math_mul_div(unsigned int a, unsigned int b, unsigned int c)
         }
         return a;
     #else
-        return (unsigned int)(((unsigned long)a * (unsigned long)b) / (unsigned long)c);
+        return (u32)(((u64)a * (u64)b) / (u64)c);
 #endif
 }

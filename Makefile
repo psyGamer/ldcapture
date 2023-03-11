@@ -9,7 +9,7 @@ EXTENSION := .so
 COMPILER_FLAGS := -fPIC
 INCLUDE_FLAGS := -Isrc -Ivendor -Ivendor/STC/include -Ivendor/FMOD
 LINKER_FLAGS := -shared -lm -ldl -lpulse -lpthread
-DEFINES := -DPLAT_LINUX
+DEFINES := 
 
 SRC_FILES := $(shell find src -name *.c -or -name *.cpp)	# .c and .cpp files
 DIRECTORIES := $(shell find src -type d)					# directories with .h files

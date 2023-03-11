@@ -1,20 +1,14 @@
-#define _XOPEN_SOURCE 700
-
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include "base.h"
 #include "timing.h"
 #include "util/pulse_wrapper.h"
 
 typedef struct combine_module_t
 {
-    uint32_t moduleIndex;
-    uint32_t ownerModuleIndex;
+    u32 moduleIndex;
+    u32 ownerModuleIndex;
 } combine_module_t;
 
-#define i_key uint32_t
+#define i_key u32
 #define i_val combine_module_t*
 #define i_tag module
 #include <stc/cmap.h>
@@ -29,44 +23,42 @@ typedef struct pulse_data_t
 
     /* client info */
     char* clientName;
-    uint32_t clientIndex;
+    u32 clientIndex;
     size_t currentPotentialClientIndex;
-    uint32_t potentialClientIndices[POTENTIAL_CLIENT_INDICES_LENGTH];
-    // uint32_t clientIndex;
+    u32 potentialClientIndices[POTENTIAL_CLIENT_INDICES_LENGTH];
+    // u32 clientIndex;
     // char *client;
 
     /* sink input info */
-    uint32_t sinkInputIndex;
-    uint32_t sinkInputSinkIndex;
+    u32 sinkInputIndex;
+    u32 sinkInputSinkIndex;
     char *sinkInputSinkName;
 
-    int moveSuccess;
+    i32 moveSuccess;
 
     /* combine module info */
     // maps from sink input sink index to combine module index
     cmap_module *combineModules;
-    int loadModuleSuccess;
-    uint32_t nextOwnerModuleIndex;
+    i32 loadModuleSuccess;
+    u32 nextOwnerModuleIndex;
 
     /* server info */
     pa_sample_format_t format;
-    uint_fast32_t samplesPerSecond;
-    uint_fast32_t bytesPerFrame;
-    uint_fast8_t channels;
-    uint64_t firstTimestamp;
+    u32 samplesPerSecond;
+    u32 bytesPerFrame;
+    u8 channels;
+    u64 firstTimestamp;
 
     /* statistics */
-    uint_fast32_t packets;
-    uint_fast64_t frames;
+    u32 packets;
+    u64 frames;
 } pulse_data_t;
-
-#define blog(...) printf(__VA_ARGS__); printf("\n");
 
 static void load_new_module(pulse_data_t *data);
 static bool move_to_combine_module(pulse_data_t *data);
 static void pulse_stop_recording(pulse_data_t *data);
 
-void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i, int eol, void *userdata)
+void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i, i32 eol, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -75,7 +67,7 @@ void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i,
         pulse_signal(0);
         return;
     }
-    blog("update sink input: Name:%s client:%i index:%i ClientIndex:%i", i->name, i->client, i->index, data->clientIndex);
+    TRACE("update sink input: Name:%s client:%i index:%i ClientIndex:%i", i->name, i->client, i->index, data->clientIndex);
     // Checking if new sink corresponds to our client
     if (data->clientIndex != PA_INVALID_INDEX && data->clientIndex == i->client)
     {
@@ -87,16 +79,16 @@ void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i,
         }
 
         // Move new sink-input to the module
-        blog("   load_new_module");
+        TRACE("   load_new_module");
         load_new_module(data);
-        blog("   move_to_combine_module");
+        TRACE("   move_to_combine_module");
         move_to_combine_module(data);
     }
 
     pulse_signal(0);
 }
 
-static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, uint32_t idx, void *userdata)
+static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u32 idx, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -104,7 +96,7 @@ static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u
     {
         if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_NEW)
         {
-            blog("new sink-input added %d", idx);
+            TRACE("new sink-input added %d", idx);
 
             // Directly calling pulse function because pulse calls
             // this callback on a helper thread and not the main
@@ -122,7 +114,7 @@ static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u
         }
         else if ((t & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
         {
-            blog("sink-input removed %d\n", idx);
+            TRACE("sink-input removed %d\n", idx);
 
             // Check if sink-input has been removed
             if (data->sinkInputIndex == idx)
@@ -135,7 +127,7 @@ static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u
     pulse_signal(0);
 }
 
-static void move_sink_input_callback(pa_context *c, int success, void *userdata)
+static void move_sink_input_callback(pa_context *c, i32 success, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
     data->moveSuccess = success;
@@ -143,7 +135,7 @@ static void move_sink_input_callback(pa_context *c, int success, void *userdata)
     pulse_signal(0);
 }
 
-static void get_client_index_callback(pa_context *c, const pa_client_info *i, int eol, void *userdata)
+static void get_client_index_callback(pa_context *c, const pa_client_info *i, i32 eol, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -152,15 +144,15 @@ static void get_client_index_callback(pa_context *c, const pa_client_info *i, in
         pulse_signal(0);
         return;
     }
-    blog("name: %s, index: %i", i->name, i->index);
+    TRACE("name: %s, index: %i", i->name, i->index);
     if (strcmp(data->clientName, i->name) == 0)
     {
-        blog("Found potential client index: %d for %s", i->index, i->name);
+        TRACE("Found potential client index: %d for %s", i->index, i->name);
         data->potentialClientIndices[data->currentPotentialClientIndex++] = i->index;
     }
 }
 
-static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *info, int eol, void *userdata)
+static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *info, i32 eol, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -169,13 +161,13 @@ static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *inf
         pulse_signal(0);
         return;
     }
-    blog("Client: %s, ClientIndex: %i", data->clientName, data->clientIndex);
-    blog("Name: %s | Index: %i", info->name, info->client);
+    TRACE("Client: %s, ClientIndex: %i", data->clientName, data->clientIndex);
+    TRACE("Name: %s | Index: %i", info->name, info->client);
     for (size_t i = 0; i < data->currentPotentialClientIndex; i++)
     {
         if (data->potentialClientIndices[i] == info->client)
         {
-            blog("found sink-input %s with index %d and sink index %d", info->name, info->index, info->sink);
+            TRACE("found sink-input %s with index %d and sink index %d", info->name, info->index, info->sink);
             data->clientIndex = data->potentialClientIndices[i];
             data->sinkInputIndex = info->index;
             data->sinkInputSinkIndex = info->sink;
@@ -183,7 +175,7 @@ static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *inf
     }
 }
 
-static void get_sink_name_by_index_callback(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
+static void get_sink_name_by_index_callback(pa_context *c, const pa_sink_info *i, i32 eol, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -196,11 +188,11 @@ static void get_sink_name_by_index_callback(pa_context *c, const pa_sink_info *i
     }
 }
 
-static void load_new_module_callback(pa_context *c, uint32_t idx, void *userdata)
+static void load_new_module_callback(pa_context *c, u32 idx, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
-    blog("new module idx %d", idx);
+    TRACE("new module idx %d", idx);
     if (idx != PA_INVALID_INDEX)
     {
         data->nextOwnerModuleIndex = idx;
@@ -213,7 +205,7 @@ static void load_new_module_callback(pa_context *c, uint32_t idx, void *userdata
     pulse_signal(0);
 }
 
-static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
+static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, i32 eol, void *userdata)
 {
     pulse_data_t *data = (pulse_data_t *)userdata;
 
@@ -222,20 +214,20 @@ static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, 
         pulse_signal(0);
         return;
     }
-    blog("Combine module callback: i->index:%i sinkInputSinkIndex:%i nextOwnerModuleIndex:%i", i->index, data->sinkInputSinkIndex, data->nextOwnerModuleIndex);
+    TRACE("Combine module callback: i->index:%i sinkInputSinkIndex:%i nextOwnerModuleIndex:%i", i->index, data->sinkInputSinkIndex, data->nextOwnerModuleIndex);
     if (data->nextOwnerModuleIndex == i->owner_module)
     {
         combine_module_t *newModule = malloc(sizeof(combine_module_t));
         newModule->moduleIndex = i->index;
         newModule->ownerModuleIndex = data->nextOwnerModuleIndex;
-        blog("New combine module: moduleIndex:%i ownerModuleIndex:%i sinkInputSinkIndex:%i", newModule->moduleIndex, newModule->ownerModuleIndex, data->sinkInputSinkIndex);
+        TRACE("New combine module: moduleIndex:%i ownerModuleIndex:%i sinkInputSinkIndex:%i", newModule->moduleIndex, newModule->ownerModuleIndex, data->sinkInputSinkIndex);
         cmap_module_insert(data->combineModules, data->sinkInputSinkIndex, newModule);
     }
 }
 
-static void unload_module_callback(pa_context *c, int success, void *userdata)
+static void unload_module_callback(pa_context *c, i32 success, void *userdata)
 {
-    blog("module unload success: %d", success);
+    TRACE("module unload success: %d", success);
     pulse_signal(0);
 }
 
@@ -244,13 +236,13 @@ static bool restore_sink(pulse_data_t *data)
     // Move existing sink-input back to old sink
     if (data->sinkInputIndex != PA_INVALID_INDEX && data->sinkInputSinkIndex != PA_INVALID_INDEX)
     {
-        blog("moving sink input %d to sink %d", data->sinkInputIndex, data->sinkInputSinkIndex);
+        TRACE("moving sink input %d to sink %d", data->sinkInputIndex, data->sinkInputSinkIndex);
         pulse_move_sink_input(data->sinkInputIndex, data->sinkInputSinkIndex, move_sink_input_callback, data);
-        blog("move done.");
+        TRACE("move done.");
 
         if (!data->moveSuccess)
         {
-            blog("move not successful");
+            TRACE("move not successful");
             return false;
         }
 
@@ -265,12 +257,12 @@ static bool get_sink_input(pulse_data_t *data)
     // Find sink-input with corresponding client
     data->sinkInputIndex = PA_INVALID_INDEX;
     data->sinkInputSinkIndex = PA_INVALID_INDEX;
-    blog("finding sink-input for the corresponding client");
+    TRACE("finding sink-input for the corresponding client");
     pulse_get_sink_input_info_list(get_sink_input_callback, data);
 
     if (data->sinkInputIndex == PA_INVALID_INDEX)
     {
-        blog("sink-input not found");
+        TRACE("sink-input not found");
         return false;
     }
     return true;
@@ -278,13 +270,13 @@ static bool get_sink_input(pulse_data_t *data)
 
 static void load_new_module(pulse_data_t *data)
 {
-    blog("looking for %d", data->sinkInputSinkIndex);
+    TRACE("looking for %d", data->sinkInputSinkIndex);
 
     if (!cmap_module_contains(data->combineModules, data->sinkInputSinkIndex)) {
         // A module for this sink has not yet been loaded
-        blog("module for sink input sink index %d has not been loaded", data->sinkInputSinkIndex);
+        TRACE("module for sink input sink index %d has not been loaded", data->sinkInputSinkIndex);
 
-        blog("getting sink name");
+        TRACE("getting sink name");
         // Get sink name from index
         pulse_get_sink_name_by_index(data->sinkInputSinkIndex, get_sink_name_by_index_callback, data);
 
@@ -293,19 +285,19 @@ static void load_new_module(pulse_data_t *data)
         char args[1024];
         sprintf(args, "sink_name=ldcaptureRecord%s slaves=%s", data->sinkInputSinkName, data->sinkInputSinkName);
 
-        blog("loading new module with args %s", args);
+        TRACE("loading new module with args %s", args);
         data->nextOwnerModuleIndex = PA_INVALID_INDEX;
         pulse_load_new_module("module-combine-sink", args, load_new_module_callback, data);
 
         if (!data->loadModuleSuccess)
         {
-            blog("Unable to load module");
+            TRACE("Unable to load module");
             return;
         }
-        blog("successfully loaded new module");
+        TRACE("successfully loaded new module");
 
         // Lookup module id with owner_module id
-        blog("looking up new module id with owner module id");
+        TRACE("looking up new module id with owner module id");
         pulse_get_sink_list(get_sink_id_by_owner_callback, data);
     }
 }
@@ -318,24 +310,24 @@ static bool move_to_combine_module(pulse_data_t *data)
 
     if (!cmap_module_contains(data->combineModules, data->sinkInputSinkIndex))
     {
-        blog("no combine module found")
+        TRACE("no combine module found");
         return false;
     }
 
-    uint32_t combineModuleIndex = iter.ref->second->moduleIndex;
-    blog("moving sink input %d to sink index %d", data->sinkInputIndex, combineModuleIndex);
+    u32 combineModuleIndex = iter.ref->second->moduleIndex;
+    TRACE("moving sink input %d to sink index %d", data->sinkInputIndex, combineModuleIndex);
     pulse_move_sink_input(data->sinkInputIndex, combineModuleIndex, move_sink_input_callback, data);
 
     if (!data->moveSuccess) 
     {
-        blog("Unable to move sink input to combine module");
+        TRACE("Unable to move sink input to combine module");
         return false;
     }
 
     return true;
 }
 
-static FILE *outFile = NULL;
+static FILE *out_file = NULL;
 
 /**
  * Callback for pulse which gets executed when new audio data is available
@@ -348,46 +340,46 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
     UNUSED_PARAMETER(nbytes);
     pulse_data_t *data = (pulse_data_t *)userdata;
 
-    blog("Getting data");
+    TRACE("Getting data");
 
     int16_t *paData = NULL;
     size_t bytes = 0;
     if (pa_stream_peek(data->stream, (const void**)&paData, &bytes) != 0)
     {
-        blog("Failed to peek at stream data");
+        TRACE("Failed to peek at stream data");
         return;
     }
 
     // No data
     if (paData == NULL && bytes == 0) 
     {
-        blog("No data");
+        TRACE("No data");
         return;
     }
     // Hole in buffer
     if (paData == NULL && bytes > 0)
     {
-        blog("Hole in buffer");
+        TRACE("Hole in buffer");
         if (pa_stream_drop(data->stream) != 0) {
-            blog("Failed to drop a hole! (Sounds weird, doesn't it?)")
+            TRACE("Failed to drop a hole! (Sounds weird, doesn't it?)");
             return;
         }
     }
 
-    blog("Got %zu bytes", bytes);
+    TRACE("Got %zu bytes", bytes);
 
-    if (outFile == NULL) outFile = fopen("./audio.dat", "wb");
+    if (out_file == NULL) out_file = fopen("./audio.dat", "wb");
 
     if (timing_is_running())
     {
-        fwrite(paData, 1, bytes, outFile);
-        fflush(outFile);
+        fwrite(paData, 1, bytes, out_file);
+        fflush(out_file);
     }
 
-    blog("Dropping");
+    TRACE("Dropping");
     if (pa_stream_drop(data->stream) != 0)
     {
-        blog("Failed to drop data after peeking.")
+        TRACE("Failed to drop data after peeking.");
         return;
     }
 
@@ -405,13 +397,13 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
 
     // if (!frames)
     // {
-    //     blog("Got audio hole of %u bytes", (unsigned int)bytes);
+    //     TRACE("Got audio hole of %u bytes", (unsigned int)bytes);
     //     pa_stream_drop(data->stream);
     //     goto exit;
     // }
 
     // // TODO: Use data
-    // blog("GOT DATA FROM PULSEAUDIO!!!!!!");
+    // TRACE("GOT DATA FROM PULSEAUDIO!!!!!!");
 
     // struct obs_source_audio out;
     // out.speakers = data->speakers;
@@ -493,7 +485,7 @@ static pa_channel_map pulse_channel_map()
     return ret;
 }
 
-static void pulse_source_info(pa_context *c, const pa_source_info *i, int eol, void *userdata)
+static void pulse_source_info(pa_context *c, const pa_source_info *i, i32 eol, void *userdata)
 {
     UNUSED_PARAMETER(c);
     pulse_data_t *data = (pulse_data_t *)userdata;
@@ -513,7 +505,7 @@ static void pulse_source_info(pa_context *c, const pa_source_info *i, int eol, v
 
     pa_proplist *proplist = i->proplist;
 
-    blog("Audio format: %s, %u Hz, %u channels",
+    TRACE("Audio format: %s, %u Hz, %u channels",
         pa_sample_format_to_string(i->sample_spec.format),
         i->sample_spec.rate, i->sample_spec.channels);
 
@@ -522,7 +514,7 @@ static void pulse_source_info(pa_context *c, const pa_source_info *i, int eol, v
     // {
     // 	format = PA_SAMPLE_FLOAT32LE;
 
-    // 	blog("Sample format %s not supported by OBS, using %s instead for recording",
+    // 	TRACE("Sample format %s not supported by OBS, using %s instead for recording",
     // 	     pa_sample_format_to_string(i->sample_spec.format),
     // 	     pa_sample_format_to_string(format));
     // }
@@ -532,7 +524,7 @@ static void pulse_source_info(pa_context *c, const pa_source_info *i, int eol, v
     // {
     // 	channels = 2;
 
-    // 	blog("%c channels not supported by OBS, using %c instead for recording", i->sample_spec.channels, channels);
+    // 	TRACE("%c channels not supported by OBS, using %c instead for recording", i->sample_spec.channels, channels);
     // }
 
     data->format = format;
@@ -547,13 +539,13 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
 
     if (pulse_get_source_info_by_name(pulse_source_info, monitorName, data) < 0)
     {
-        blog("Unable to get client info !");
+        TRACE("Unable to get client info !");
         return -1;
     }
 
     if (data->format == PA_SAMPLE_INVALID)
     {
-        blog("An error occurred while getting the client info!");
+        TRACE("An error occurred while getting the client info!");
         return -1;
     }
 
@@ -564,7 +556,7 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
 
     if (!pa_sample_spec_valid(&spec))
     {
-        blog("Sample spec is not valid");
+        TRACE("Sample spec is not valid");
         return -1;
     }
 
@@ -576,7 +568,7 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
     data->stream = pulse_stream_new("ldcaptureStream", &spec, &channelMap);
     if (!data->stream)
     {
-        blog("Unable to create stream");
+        TRACE("Unable to create stream");
         return -1;
     }
 
@@ -586,10 +578,10 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
 
     pa_buffer_attr attr;
     attr.fragsize = pa_usec_to_bytes(25000, &spec);
-    attr.maxlength = (uint32_t)-1;
-    attr.minreq = (uint32_t)-1;
-    attr.prebuf = (uint32_t)-1;
-    attr.tlength = (uint32_t)-1;
+    attr.maxlength = (u32)-1;
+    attr.minreq = (u32)-1;
+    attr.prebuf = (u32)-1;
+    attr.tlength = (u32)-1;
 
     pa_stream_flags_t flags = PA_STREAM_ADJUST_LATENCY;
 
@@ -599,11 +591,11 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
     if (ret < 0)
     {
         pulse_stop_recording(data);
-        blog("Unable to connect to stream");
+        TRACE("Unable to connect to stream");
         return -1;
     }
 
-    blog("Started recording from '%s'", data->clientName);
+    TRACE("Started recording from '%s'", data->clientName);
     return 0;
 }
 
@@ -618,8 +610,8 @@ static void pulse_stop_recording(pulse_data_t *data)
         pulse_unlock();
     }
 
-    blog("Stopped recording from '%s'", data->clientName);
-    blog("Got %lu packets with %lu frames", data->packets, data->frames);
+    TRACE("Stopped recording from '%s'", data->clientName);
+    TRACE("Got %lu packets with %lu frames", data->packets, data->frames);
 
     data->firstTimestamp = 0;
     data->packets = 0;
@@ -665,26 +657,26 @@ static void audiocapture_pulseaudio_update(void *userdata)
 
     if (!restore_sink(data))
     {
-        blog("FAILED UPDATE: restore_sink");
+        TRACE("FAILED UPDATE: restore_sink");
         return;
     }
 
     // Find client idx
     data->clientIndex = PA_INVALID_INDEX;
     data->currentPotentialClientIndex = 0;
-    for (int i = 0; i < POTENTIAL_CLIENT_INDICES_LENGTH; i++) data->potentialClientIndices[i] = PA_INVALID_INDEX;
+    for (i32 i = 0; i < POTENTIAL_CLIENT_INDICES_LENGTH; i++) data->potentialClientIndices[i] = PA_INVALID_INDEX;
     pulse_get_client_info_list(get_client_index_callback, data);
-    blog("searching for client index");
+    TRACE("searching for client index");
 
     if (data->currentPotentialClientIndex == 0)
     {
-        blog("client not found");
+        TRACE("client not found");
         return;
     }
 
     if (!get_sink_input(data))
     {
-        blog("FAILED UPDATE: get_sink_input");
+        TRACE("FAILED UPDATE: get_sink_input");
         return;
     }
 
@@ -692,27 +684,27 @@ static void audiocapture_pulseaudio_update(void *userdata)
 
     if (!move_to_combine_module(data))
     {
-        blog("FAILED UPDATE: move_to_combine_module");
+        TRACE("FAILED UPDATE: move_to_combine_module");
         return;
     }
 
     if (data->stream)
     {
-        blog("stopping recording");
+        TRACE("stopping recording");
         pulse_stop_recording(data);
     }
 
     // Start recording from the combine module
-    blog("starting recording");
+    TRACE("starting recording");
     pulse_start_recording(data);
 
-    blog("SUCCESS UPDATE");
+    TRACE("SUCCESS UPDATE");
     init2 = true;
 }
 
 void init_audiocapture_pulseaudio()
 {
-    blog("-------------")
+    TRACE("-------------");
     if (!init1)
     {
         gdata = malloc(sizeof(pulse_data_t));
@@ -723,22 +715,22 @@ void init_audiocapture_pulseaudio()
         gdata->combineModules = malloc(sizeof(cmap_module));
         memset(gdata->combineModules, 0, sizeof(cmap_module));
         
-        blog("initting from create");
+        TRACE("initting from create");
         pulse_init();
         pulse_subscribe_sink_input_events(sink_event_callback, gdata);
-        blog("finished initting from create now calling update");
+        TRACE("finished initting from create now calling update");
         init1 = true;
     }
-    blog("calling update");
+    TRACE("calling update");
     audiocapture_pulseaudio_update(gdata);
-    blog("finished updating from create");
+    TRACE("finished updating from create");
 }
 
 void shutdown_audiocapture_pulseaudio()
 {
-    blog("Trying to shut down");
+    TRACE("Trying to shut down");
     if (shut1 || shut2) return;
-    blog("Starting shut down");
+    TRACE("Starting shut down");
     shut1 = true;
 
     pulse_data_t *data = (pulse_data_t *)gdata;
@@ -750,12 +742,12 @@ void shutdown_audiocapture_pulseaudio()
     {
         if (get_sink_input(data))
         {
-            blog("moving sink input %d to sink %d", data->sinkInputIndex, data->sinkInputSinkIndex);
+            TRACE("moving sink input %d to sink %d", data->sinkInputIndex, data->sinkInputSinkIndex);
             pulse_move_sink_input(data->sinkInputIndex, data->sinkInputSinkIndex, move_sink_input_callback, data);
 
             if (!data->moveSuccess)
             {
-                blog("move not successful");
+                TRACE("move not successful");
             }
         }
     }
@@ -777,7 +769,7 @@ void shutdown_audiocapture_pulseaudio()
 
     free(data);
     shut2 = true;
-    blog("Successful shut down");
+    TRACE("Successful shut down");
 }
 
 bool is_shutdown_done_audiocapture_pulseaudio()

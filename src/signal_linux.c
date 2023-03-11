@@ -1,5 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "base.h"
+
 #include <signal.h>
 #include <unistd.h>
 #include <execinfo.h>
@@ -9,23 +9,23 @@
 #define IMPL_HANDLE_SIGNAL(sig, printStack) \
     void handle_signal_##sig() \
     { \
-        printf("Got exit signal " #sig "\n"); \
+        DEBUG("Got exit signal " #sig); \
         shutdown_ldcapture(); \
-        if (!is_shutdown_done_ldcapture()) printf("Shutting down..."); \
+        if (!is_shutdown_done_ldcapture()) DEBUG("Shutting down..."); \
         while (!is_shutdown_done_ldcapture()); \
-        printf("   DONE\n"); \
+        DEBUG("DONE"); \
         if (printStack) { \
-            printf("-- Stacktrace START --\n"); \
-            unsigned int cnt = 64; \
+            DEBUG("-- Stacktrace START --"); \
+            u32 cnt = 64; \
             void **buf = calloc(cnt, sizeof(void *)); \
             backtrace(buf, cnt); \
             char **syms = backtrace_symbols(buf, cnt); \
-            for (int i = 0; i < cnt; i++) \
+            for (i32 i = 0; i < cnt; i++) \
             { \
                 if (buf[i] == NULL) break; \
-                printf("%i: %s\n", i, syms[i]); \
+                DEBUG("%i: %s", i, syms[i]); \
             } \
-            printf("-- Stacktrace END --\n"); \
+            DEBUG("-- Stacktrace END --"); \
         } \
         _exit(EXIT_FAILURE); \
     }

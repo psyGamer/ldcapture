@@ -1,16 +1,14 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include "base.h"
 
 #include "hook.h"
 
-static const uint32_t SECONDS_TO_TICKS = 1000000000;
-static const uint32_t TARGET_FPS = 60;
-static const uint64_t TARGET_TIMESTEP_INC = (uint64_t)((1.0 / TARGET_FPS) * SECONDS_TO_TICKS);
+static const u32 SECONDS_TO_TICKS = 1000000000;
+static const u32 TARGET_FPS = 60;
+static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS) * SECONDS_TO_TICKS);
 
-static int currentFrame = 0;
-static uint64_t currentTimestamp = -1;
-static uint64_t currentRealTimestamp = -1;
+static u32 currentFrame = 0;
+static u64 currentTimestamp = -1;
+static u64 currentRealTimestamp = -1;
 
 static bool fixedFPS = false;
 
@@ -49,7 +47,8 @@ void timing_next_frame()
 
     videoDone = false;
     soundDone = false;
-    printf("NEXT FRAME!\n");
+
+    TRACE("Current frame: %i", currentFrame);
 }
 
 bool timing_is_running()
@@ -60,13 +59,11 @@ bool timing_is_running()
 void timing_video_done()
 {
     videoDone = true;
-    printf("VIDEO DONE!\n");
 }
 
 void timing_sound_done()
 {
     soundDone = true;
-    printf("SOUND DONE!\n");
 }
 
 bool timing_is_video_done()
@@ -87,12 +84,12 @@ bool timing_is_realtime_frame_done()
     return currentRealTimestamp == -1 || ((orig_SystemNative_GetTimestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC);
 }
 
-int timing_get_target_fps()
+i32 timing_get_target_fps()
 {
     return TARGET_FPS;
 }
 
-int timing_get_current_frame()
+i32 timing_get_current_frame()
 {
     return currentFrame;
 }

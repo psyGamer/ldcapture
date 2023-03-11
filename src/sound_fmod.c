@@ -1,9 +1,5 @@
-#define _XOPEN_SOURCE 700
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
+#include "base.h"
+
 #include <pthread.h>
 
 #include <fmod_studio_common.h>
@@ -12,32 +8,15 @@
 #include "timing.h"
 #include "util/math.h"
 
-static FMOD_RESULT (*orig_FMOD_System_init)(FMOD_SYSTEM *system, int maxchannels, FMOD_INITFLAGS flags, void *extradriverdata) = NULL;
+static FMOD_RESULT (*orig_FMOD_System_init)(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INITFLAGS flags, void *extradriverdata) = NULL;
 static FMOD_RESULT (*orig_FMOD_System_release)(FMOD_SYSTEM *system)                                                            = NULL;
 
 static FMOD_RESULT (*fn_FMOD_System_CreateDSP)(FMOD_SYSTEM *system, const FMOD_DSP_DESCRIPTION *description, FMOD_DSP **dsp) = NULL;
 static FMOD_RESULT (*fn_FMOD_System_GetMasterChannelGroup)(FMOD_SYSTEM *system, FMOD_CHANNELGROUP **channelgroup)            = NULL;
-static FMOD_RESULT (*fn_FMOD_ChannelGroup_AddDSP)(FMOD_CHANNELGROUP *channelgroup, int index, FMOD_DSP *dsp)                 = NULL;
+static FMOD_RESULT (*fn_FMOD_ChannelGroup_AddDSP)(FMOD_CHANNELGROUP *channelgroup, i32 index, FMOD_DSP *dsp)                 = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_RemoveDSP)(FMOD_CHANNELGROUP *channelgroup, FMOD_DSP *dsp)                         = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_SetPaused)(FMOD_CHANNELGROUP *channelgroup, FMOD_BOOL paused)                      = NULL;
 static FMOD_RESULT (*fn_FMOD_DSP_Release)(FMOD_DSP *dsp)                                                                     = NULL;
-
-typedef struct dsp_data_t
-{
-    float *buffer;
-    float volumeLinear;
-    int lengthSamples;
-    int channels;
-} dsp_data_t;
-
-static FMOD_DSP *dsp;
-static FMOD_CHANNELGROUP *masterGroup;
-
-static FILE *outFile;
-
-static int totalRecodedSamplesError = 0;
-static int targetRecordedSamples = 48000 / 60;
-static int recordedSamples = 0;
 
 static void load_symbols()
 {
@@ -56,65 +35,33 @@ static void load_symbols()
     shared_library_close(libfmod);
 }
 
-FMOD_RESULT F_CALLBACK dsp_create_callback(FMOD_DSP_STATE *dspState)
+static FMOD_DSP *dsp;
+static FMOD_CHANNELGROUP *master_group;
+
+static FILE *out_file;
+
+static i32 total_recoded_samples_error = 0;
+static i32 target_recorded_samples = 48000 / 60;
+static i32 recorded_samples = 0;
+
+FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE *dspState, f32 *inBuffer, f32 *outBuffer, u32 length, i32 inChannels, i32 *outChannels) 
 {
-    unsigned int blocksize;
-    FMOD_RESULT result;
+    if (out_file == NULL) out_file = fopen("./audio-fmod.dat", "wb");
 
-    result = dspState->functions->getblocksize(dspState, &blocksize);
+    i32 size = max(inChannels, *outChannels) * length;
 
-    dsp_data_t *data = calloc(sizeof(dsp_data_t), 1);
-    if (!data)
-    {
-        return FMOD_ERR_MEMORY;
-    }
-    dspState->plugindata = data;
-    data->volumeLinear = 0.5f;
-    data->lengthSamples = blocksize;
-
-    // *8 = maximum size allowing room for 7.1.   Could ask dsp_state->functions->getspeakermode for the right speakermode to get real speaker count.
-    data->buffer = malloc(blocksize * 8 * sizeof(float));
-    if (!data->buffer)
-    {
-        return FMOD_ERR_MEMORY;
-    }
-
-    return FMOD_OK;
-}
-
-FMOD_RESULT F_CALLBACK dsp_release_callback(FMOD_DSP_STATE *dspState)
-{
-    if (dspState->plugindata)
-    {
-        dsp_data_t *data = (dsp_data_t *)dspState->plugindata;
-
-        if (data->buffer) free(data->buffer);
-        free(data);
-    }
-
-    return FMOD_OK;
-}
-
-FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE *dspState, float *inBuffer, float *outBuffer, unsigned int length, int inChannels, int *outChannels) 
-{
-    dsp_data_t *data = dspState->plugindata;
-
-    if (outFile == NULL) outFile = fopen("./audio-fmod.dat", "wb");
-
-    int size = max(inChannels, *outChannels) * length;
-
-    memcpy(outBuffer, inBuffer, size * sizeof(float));
-    recordedSamples += length;
+    memcpy(outBuffer, inBuffer, size * sizeof(f32));
+    recorded_samples += length;
 
     if (inChannels != 2 || *outChannels != 2) return FMOD_OK;
 
-    fwrite(inBuffer, sizeof(float), size, outFile);
-    fflush(outFile);
+    fwrite(inBuffer, sizeof(f32), size, out_file);
+    fflush(out_file);
 
     return FMOD_OK;
 }
 
-FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, int maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
+FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
 {
     if (orig_FMOD_System_init == NULL) load_symbols();
     FMOD_RESULT result = orig_FMOD_System_init(system, maxchannels, flags, extradriverdata);
@@ -133,12 +80,10 @@ FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, int maxchannels, FMOD_INI
     desc.numinputbuffers  = 1;
     desc.numoutputbuffers = 1;
     desc.read             = dsp_read_callback; 
-    desc.create           = dsp_create_callback;
-    desc.release          = dsp_release_callback;
 
-    fn_FMOD_System_GetMasterChannelGroup(system, &masterGroup);
+    fn_FMOD_System_GetMasterChannelGroup(system, &master_group);
     fn_FMOD_System_CreateDSP(system, &desc, &dsp);
-    fn_FMOD_ChannelGroup_AddDSP(masterGroup, 0, dsp);
+    fn_FMOD_ChannelGroup_AddDSP(master_group, 0, dsp);
 
     return result;
 }
@@ -150,48 +95,49 @@ FMOD_RESULT hook_FMOD_System_release(FMOD_SYSTEM *system)
 
     if (result != FMOD_OK) return result;
 
-    FMOD_ChannelGroup_RemoveDSP(masterGroup, dsp);
+    FMOD_ChannelGroup_RemoveDSP(master_group, dsp);
     FMOD_DSP_Release(dsp);
 
     return result;
 }
 
-static bool runSoundWorker = true;
-static pthread_t soundWorkerThread;
+static bool run_sound_worker = true;
+static pthread_t sound_worker_thread = (pthread_t)NULL;
 
 static void *sound_worker(void *_)
 {
-    printf("Starting sound thread\n"); fflush(stdout);
-    while (runSoundWorker)
+    TRACE("Started FMOD sound thread");
+
+    while (run_sound_worker)
     {
         // We spin while waiting since we need to respond quickly
         if (!timing_is_running()) continue;
 
-        printf("Sound 1\n"); fflush(stdout);
         while (timing_is_sound_done());
 
         // Wait a frame to sync again with the video
-        if (totalRecodedSamplesError >= targetRecordedSamples)
+        if (total_recoded_samples_error >= target_recorded_samples)
         {
             while (!timing_is_realtime_frame_done());
-            totalRecodedSamplesError -= targetRecordedSamples;
+            total_recoded_samples_error -= target_recorded_samples;
             timing_sound_done();
             continue;
         }
 
-        recordedSamples = 0;
+        recorded_samples = 0;
 
-        fn_FMOD_ChannelGroup_SetPaused(masterGroup, false);
-        while (recordedSamples == 0); // Wait for data
-        fn_FMOD_ChannelGroup_SetPaused(masterGroup, true);
+        fn_FMOD_ChannelGroup_SetPaused(master_group, false);
+        while (recorded_samples == 0); // Wait for data
+        fn_FMOD_ChannelGroup_SetPaused(master_group, true);
 
-        totalRecodedSamplesError += recordedSamples - targetRecordedSamples;
+        total_recoded_samples_error += recorded_samples - target_recorded_samples;
 
-        printf("Sound Done: %i | Error: %i\n", recordedSamples, totalRecodedSamplesError); fflush(stdout);
         timing_sound_done();
     }
 
-    fn_FMOD_ChannelGroup_SetPaused(masterGroup, false);
+    TRACE("Stopped FMOD sound thread");
+
+    fn_FMOD_ChannelGroup_SetPaused(master_group, false);
 
     return NULL;
 }
@@ -209,18 +155,22 @@ void init_sound_fmod5()
     hook_symbol(NULL, (void **)&fn_FMOD_ChannelGroup_SetPaused, "FMOD_ChannelGroup_SetPaused");
     hook_symbol(NULL, (void **)&fn_FMOD_DSP_Release, "FMOD_DSP_Release");
 
-
-    pthread_create(&soundWorkerThread, NULL, sound_worker, NULL);
+    pthread_create(&sound_worker_thread, NULL, sound_worker, NULL);
 }
 
 void shutdown_soundsys_fmod5()
 {
-    runSoundWorker = false;
-    pthread_join(soundWorkerThread, NULL);
+    run_sound_worker = false;
+    
+    if (sound_worker_thread)
+        pthread_join(sound_worker_thread, NULL);
+
+    if (out_file)
+        fclose(out_file);
 }
 
 // libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)
-FMOD_RESULT _ZN4FMOD6System4initEijPv(FMOD_SYSTEM *system, int maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
+FMOD_RESULT _ZN4FMOD6System4initEijPv(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
 {
     return hook_FMOD_System_init(system, maxchannels, flags, extradriverdata);
 }

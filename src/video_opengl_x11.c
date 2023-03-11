@@ -16,53 +16,8 @@
 #include "encoder.h"
 #include "timing.h"
 
-static void capture_frame(Display *dpy);
-
 static encoder_t *encoder;
-
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
-{
-    if (!timing_is_running()) timing_start();
-
-    timing_next_frame();
-    capture_frame(dpy);
-
-    orig_glXSwapBuffers(dpy, drawable);
-})
-
-SYM_HOOK(void, glXDestroyWindow, (Display *dpy, GLXWindow window),
-{
-    printf("Shutting down from glXDestroyWindow!\n");
-    shutdown_ldcapture();
-    orig_glXDestroyWindow(dpy, window);
-})
-
-SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),
-{
-    if (strcmp((const char *)procName, "glXSwapBuffers") == 0)
-    {
-        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXSwapBuffers");
-        return (__GLXextFuncPtr)glXSwapBuffers;
-    }
-    if (strcmp((const char *)procName, "glXDestroyWindow") == 0)
-    {
-        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXDestroyWindow");
-        return (__GLXextFuncPtr)glXDestroyWindow;
-    }
-
-    return orig_glXGetProcAddressARB(procName);
-})
-
-void init_video_opengl_x11()
-{
-    encoder = encoder_create(ENCODER_TYPE_QOI);
-
-    LOAD_SYM_HOOK(glXSwapBuffers);
-    LOAD_SYM_HOOK(glXDestroyWindow);
-    LOAD_SYM_HOOK(glXGetProcAddressARB);
-}
 
 static void capture_frame(Display *dpy)
 {
@@ -115,4 +70,45 @@ static void capture_frame(Display *dpy)
     glReadBuffer(oldReadBuffer);
 
     pthread_mutex_unlock(&mutex);
+}
+
+SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
+{
+    if (!timing_is_running()) timing_start();
+
+    timing_next_frame();
+    capture_frame(dpy);
+
+    orig_glXSwapBuffers(dpy, drawable);
+})
+
+SYM_HOOK(void, glXDestroyWindow, (Display *dpy, GLXWindow window),
+{
+    shutdown_ldcapture();
+    orig_glXDestroyWindow(dpy, window);
+})
+
+SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),
+{
+    if (strcmp((const char *)procName, "glXSwapBuffers") == 0)
+    {
+        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXSwapBuffers");
+        return (__GLXextFuncPtr)glXSwapBuffers;
+    }
+    if (strcmp((const char *)procName, "glXDestroyWindow") == 0)
+    {
+        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXDestroyWindow");
+        return (__GLXextFuncPtr)glXDestroyWindow;
+    }
+
+    return orig_glXGetProcAddressARB(procName);
+})
+
+void init_video_opengl_x11()
+{
+    encoder = encoder_create(ENCODER_TYPE_QOI);
+
+    LOAD_SYM_HOOK(glXSwapBuffers);
+    LOAD_SYM_HOOK(glXDestroyWindow);
+    LOAD_SYM_HOOK(glXGetProcAddressARB);
 }

@@ -1,13 +1,14 @@
 #pragma once
 
+#include "base.h"
 #include "init.h"
 
 typedef struct symbol_hook_t
 {
-    const char *symbolName;
+    const char *symbol_name;
 
     void *address;
-    void **originalAddress;
+    void **original_address;
 } symbol_hook_t;
 
 typedef void *library_handle_t;
@@ -20,7 +21,7 @@ library_handle_t shared_library_open(const char *libraryName);
 void shared_library_close(library_handle_t handle);
 void *shared_library_get_symbol(library_handle_t handle, const char *symbolName);
 
-#ifdef PLAT_LINUX
+#ifdef PLATFORM_LINUX
 
 // Setup everything for dlsym hook or LD_PRELOAD
 #define SYM_HOOK(ret, name, args, body)              \

@@ -184,7 +184,7 @@ void pulse_wait()
     pa_threaded_mainloop_wait(pulse_mainloop);
 }
 
-void pulse_signal(int wait_for_accept)
+void pulse_signal(i32 wait_for_accept)
 {
     pa_threaded_mainloop_signal(pulse_mainloop, wait_for_accept);
 }
@@ -426,7 +426,7 @@ int_fast32_t pulse_unload_module(uint32_t idx, pa_context_success_cb_t cb, void 
     return 0;
 }
 
-static void subscribe_cb(pa_context *c, int success, void *userdata)
+static void subscribe_cb(pa_context *c, i32 success, void *userdata)
 {
     bool *result = (bool *)userdata;
     *result = success != 0;

@@ -1,21 +1,17 @@
-#ifdef PLAT_LINUX
-
 #include "hook.h"
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
+#ifdef PLATFORM_LINUX
 
 #define __USE_GNU
 #include <dlfcn.h>
 #include <link.h>
 
-static int hookedSymbolIndex = 0;
-static symbol_hook_t hookedSymbols[1024];
+#define MAX_HOOKED_SYMBOLS 1024
+static i32 hooked_symbol_index = 0;
+static symbol_hook_t hooked_symbols[MAX_HOOKED_SYMBOLS];
 
 // Let's hope this doesn't catch fire..
-typedef void *(*dlsym_fn_t)(void *, const char *);
-static dlsym_fn_t orig_dlsym = NULL;
+static void *(*orig_dlsym)(void *, const char *) = NULL;
 
 static void init_dlsym()
 {
@@ -30,12 +26,12 @@ static void init_dlsym()
 void *dlsym(void *handle, const char *name) {
     if (orig_dlsym == NULL) init_dlsym();
 
-    for (int i = 0; i < hookedSymbolIndex; i++)
+    for (i32 i = 0; i < hooked_symbol_index; i++)
     {
-        symbol_hook_t *hook = &hookedSymbols[i];
-        if (strcmp(hook->symbolName, name) == 0)
+        symbol_hook_t *hook = &hooked_symbols[i];
+        if (strcmp(hook->symbol_name, name) == 0)
         {
-            if (*hook->originalAddress == NULL) *hook->originalAddress = orig_dlsym(handle, name);
+            if (*hook->original_address == NULL) *hook->original_address = orig_dlsym(handle, name);
             if (hook->address != NULL) return hook->address;
         }
     }
@@ -45,14 +41,15 @@ void *dlsym(void *handle, const char *name) {
 
 void hook_symbol(void *address, void **originalAddress, const char *symbolName)
 {
-    if (hookedSymbolIndex >= 1024)
+    if (hooked_symbol_index >= MAX_HOOKED_SYMBOLS)
     {
-        fprintf(stderr, "Reached maximum amount of symbol hooks (1024), can't add more!\n");
+        FATAL("Reached maximum amount of symbol hooks (%i), can't add more!", MAX_HOOKED_SYMBOLS);
+        exit(EXIT_FAILURE);
         return;
     }
 
-    symbol_hook_t hook = { .symbolName = symbolName, .address = address, .originalAddress = originalAddress };
-    hookedSymbols[hookedSymbolIndex++] = hook;
+    symbol_hook_t hook = { .symbol_name = symbolName, .address = address, .original_address = originalAddress };
+    hooked_symbols[hooked_symbol_index++] = hook;
 }
 
 void *load_orig_function(const char *origName)
@@ -61,7 +58,7 @@ void *load_orig_function(const char *origName)
 
     void *orig = orig_dlsym(RTLD_NEXT, origName);
     if (orig == NULL)
-        fprintf(stderr, "Failed loading original function %s: %s\n", origName, dlerror());
+        ERROR("Failed loading original function %s: %s", origName, dlerror());
 
     return orig;
 }
@@ -76,7 +73,7 @@ library_handle_t shared_library_open(const char *libraryName)
     library_handle_t handle = dlopen(actualLibraryName, RTLD_LAZY);
 
     if (handle == NULL)
-        fprintf(stderr, "Failed loading library %s: %s\n", actualLibraryName, dlerror());
+        ERROR("Failed loading library %s: %s", actualLibraryName, dlerror());
 
     return handle;
 }
@@ -97,12 +94,12 @@ void *shared_library_get_symbol(library_handle_t handle, const char *symbolName)
     if (symbol == NULL)
     {
         if (map == NULL || map->l_name == NULL)
-            fprintf(stderr, "Failed loading symbol %s from <unknown>(%p): %s\n", symbolName, handle, dlerror());
+            ERROR("Failed loading symbol %s from <unknown>(%p): %s", symbolName, handle, dlerror());
         else
-            fprintf(stderr, "Failed loading symbol %s from %s(%p): %s\n", symbolName, map->l_name, handle, dlerror());
+            ERROR("Failed loading symbol %s from %s(%p): %s", symbolName, map->l_name, handle, dlerror());
     }
 
     return symbol;
 }
 
-#endif // PLAT_LINUX
+#endif // PLATFORM_LINUX

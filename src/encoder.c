@@ -1,9 +1,4 @@
 #include "encoder.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
 #include "encoder_qoi.h"
 
 encoder_t *encoder_create(encoder_type_t type)
@@ -14,7 +9,7 @@ encoder_t *encoder_create(encoder_type_t type)
     encoder->width = 0;
     encoder->height = 0;
     encoder->data = NULL;
-    encoder->frameCount = 0;
+    encoder->frame_count = 0;
 
     switch (type)
     {
@@ -39,7 +34,7 @@ void encoder_destroy(encoder_t *encoder)
     free(encoder);
 }
 
-void encoder_resize(encoder_t *encoder, unsigned int width, unsigned int height)
+void encoder_resize(encoder_t *encoder, u32 width, u32 height)
 {
     bool reallocate = (encoder->width * encoder->height) < (width * height) ||   // Buffer too small
                       (encoder->width * encoder->height) > (width * height * 2); // Buffer is more than double as big as it should be
@@ -59,10 +54,10 @@ void encoder_resize(encoder_t *encoder, unsigned int width, unsigned int height)
 
 void encoder_save_frame(encoder_t *encoder)
 {
-    if (encoder->frameCount <= 10)
+    if (encoder->frame_count <= 10)
     {
         // The first few frames are usually garbage.
-        encoder->frameCount++;
+        encoder->frame_count++;
         return;
     }
 
@@ -73,5 +68,5 @@ void encoder_save_frame(encoder_t *encoder)
         break;
     }
 
-    encoder->frameCount++;
+    encoder->frame_count++;
 }
