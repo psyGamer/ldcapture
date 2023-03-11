@@ -2,7 +2,20 @@
 
 #include <stdbool.h>
 
-void timing_start_fixed_fps();
-bool timing_is_fixed_fps();
+void timing_start();
+void timing_stop();
+
+bool timing_is_running();
 
 void timing_next_frame();
+
+void timing_video_done();
+void timing_sound_done();
+bool timing_is_video_done();
+bool timing_is_sound_done();
+
+bool timing_is_realtime_frame_done();
+
+int timing_get_target_fps();
+
+int timing_get_current_frame();

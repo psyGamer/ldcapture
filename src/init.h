@@ -3,15 +3,24 @@
 #include <stdbool.h>
 
 void init_ldcapture();
+bool is_initialized_ldcapture();
 void shutdown_ldcapture();
 bool is_shutdown_done_ldcapture();
 
-void init_video_opengl_x11(); // video_opengl_x11.c
+// video_opengl_x11.c
+void init_video_opengl_x11();
 
-void init_sound_pulseaudio(); // sound_pulseaudio.c
-void shutdown_sound_pulseaudio(); // sound_pulseaudio.c
-bool is_shutdown_done_sound_pulseaudio(); // sound_pulseaudio.c
+// sound_fmod.c
+void init_sound_fmod5();
+void shutdown_soundsys_fmod5();
 
-void init_timing_linux(); // timing_linux.c
+// audiocapture_pulseaudio.c
+void init_audiocapture_pulseaudio();
+void shutdown_audiocapture_pulseaudio();
+bool is_shutdown_done_audiocapture_pulseaudio();
 
-void init_signal_linux(); // signal_linux.c
+// timing_linux.c
+void init_timing_linux();
+
+// signal_linux.c
+void init_signal_linux();

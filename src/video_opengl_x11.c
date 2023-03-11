@@ -1,7 +1,10 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
+#include <errno.h>
 
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
@@ -21,11 +24,12 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
 {
-    if (!timing_is_fixed_fps()) timing_start_fixed_fps();
+    if (!timing_is_running()) timing_start();
 
-    capture_frame(dpy);
-    orig_glXSwapBuffers(dpy, drawable);
     timing_next_frame();
+    capture_frame(dpy);
+
+    orig_glXSwapBuffers(dpy, drawable);
 })
 
 SYM_HOOK(void, glXDestroyWindow, (Display *dpy, GLXWindow window),
@@ -103,6 +107,9 @@ static void capture_frame(Display *dpy)
     free(tempRow);
 
     encoder_save_frame(encoder);
+    
+    timing_video_done();
+    while (!timing_is_sound_done()); // Wait for sound
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
     glReadBuffer(oldReadBuffer);

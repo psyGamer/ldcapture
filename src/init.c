@@ -6,25 +6,19 @@
 
 static bool initialized = false;
 
-static void bye()
-{
-    printf("Shutting down from atexit!\n");
-    shutdown_ldcapture();
-}
-
 void init_ldcapture()
 {
     if (initialized) return;
 
     init_video_opengl_x11();
 
-    init_sound_pulseaudio();
+    init_sound_fmod5();
 
     init_timing_linux();
     
     init_signal_linux();
 
-    atexit(bye);
+    atexit(shutdown_ldcapture);
 
     initialized = true;
 }
@@ -33,12 +27,17 @@ void shutdown_ldcapture()
 {
     if (!initialized) return;
 
-    shutdown_sound_pulseaudio();
+    shutdown_soundsys_fmod5();
 
     initialized = false;
 }
 
+bool is_initialized_ldcapture()
+{
+    return initialized;
+}
+
 bool is_shutdown_done_ldcapture()
 {
-    return is_shutdown_done_sound_pulseaudio();
+    return true;
 }

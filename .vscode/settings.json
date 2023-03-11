@@ -44,8 +44,17 @@
         "shared_mutex": "c",
         "stdlib.h": "c",
         "signal.h": "c",
-        "sigaction.h": "c"
+        "sigaction.h": "c",
+        "fmod_studio_common.h": "c",
+        "fmod.h": "c",
+        "math.h": "c",
+        "fmod_common.h": "c",
+        "time.h": "c",
+        "timing.h": "c",
+        "errno.h": "c",
+        "init.h": "c"
     },
+    "C_Cpp.default.defines": ["PLAT_LINUX"],
     
     "editor.tabSize": 4,
     "editor.insertSpaces": true

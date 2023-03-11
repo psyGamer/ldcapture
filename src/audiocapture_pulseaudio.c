@@ -378,7 +378,7 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
 
     if (outFile == NULL) outFile = fopen("./audio.dat", "wb");
 
-    if (timing_is_fixed_fps())
+    if (timing_is_running())
     {
         fwrite(paData, 1, bytes, outFile);
         fflush(outFile);
@@ -632,7 +632,7 @@ static bool init2 = false;
 static bool shut1 = false;
 static bool shut2 = false;
 
-static void sound_pulseaudio_update(void *userdata)
+static void audiocapture_pulseaudio_update(void *userdata)
 {
     if (init2) return;
 
@@ -710,7 +710,7 @@ static void sound_pulseaudio_update(void *userdata)
     init2 = true;
 }
 
-void init_sound_pulseaudio()
+void init_audiocapture_pulseaudio()
 {
     blog("-------------")
     if (!init1)
@@ -730,11 +730,11 @@ void init_sound_pulseaudio()
         init1 = true;
     }
     blog("calling update");
-    sound_pulseaudio_update(gdata);
+    audiocapture_pulseaudio_update(gdata);
     blog("finished updating from create");
 }
 
-void shutdown_sound_pulseaudio()
+void shutdown_audiocapture_pulseaudio()
 {
     blog("Trying to shut down");
     if (shut1 || shut2) return;
@@ -780,7 +780,7 @@ void shutdown_sound_pulseaudio()
     blog("Successful shut down");
 }
 
-bool is_shutdown_done_sound_pulseaudio()
+bool is_shutdown_done_audiocapture_pulseaudio()
 {
     return shut2;
 }

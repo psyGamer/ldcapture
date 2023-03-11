@@ -2,49 +2,43 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <execinfo.h>
 
 #include "init.h"
 
-#define IMPL_HANDLE_SIGNAL(sig) \
+#define IMPL_HANDLE_SIGNAL(sig, printStack) \
     void handle_signal_##sig() \
     { \
         printf("Got exit signal " #sig "\n"); \
         shutdown_ldcapture(); \
-        if (!is_shutdown_done_ldcapture()) printf("Spinner until shutdown is done..."); \
-        while (!is_shutdown_done_ldcapture()) { } \
+        if (!is_shutdown_done_ldcapture()) printf("Shutting down..."); \
+        while (!is_shutdown_done_ldcapture()); \
         printf("   DONE\n"); \
+        if (printStack) { \
+            printf("-- Stacktrace START --\n"); \
+            unsigned int cnt = 64; \
+            void **buf = calloc(cnt, sizeof(void *)); \
+            backtrace(buf, cnt); \
+            char **syms = backtrace_symbols(buf, cnt); \
+            for (int i = 0; i < cnt; i++) \
+            { \
+                if (buf[i] == NULL) break; \
+                printf("%i: %s\n", i, syms[i]); \
+            } \
+            printf("-- Stacktrace END --\n"); \
+        } \
         _exit(EXIT_FAILURE); \
     }
 
-// void handle_signal()
-// {
-//     printf("Got exit signal\n");
-//     shutdown_ldcapture();
-
-//     // Spin while wait for shutdown to complete
-//     if (!is_shutdown_done_ldcapture()) printf("Spinner until shutdown is done");
-//     while (!is_shutdown_done_ldcapture()) { printf("."); }
-//     printf("   DONE\n");
-
-//     _exit(EXIT_FAILURE);
-// }
-
-IMPL_HANDLE_SIGNAL(SIGABRT);
-IMPL_HANDLE_SIGNAL(SIGFPE);
-IMPL_HANDLE_SIGNAL(SIGILL);
-IMPL_HANDLE_SIGNAL(SIGINT);
-IMPL_HANDLE_SIGNAL(SIGSEGV);
-IMPL_HANDLE_SIGNAL(SIGTERM);
+IMPL_HANDLE_SIGNAL(SIGABRT, true);
+IMPL_HANDLE_SIGNAL(SIGFPE, true);
+IMPL_HANDLE_SIGNAL(SIGILL, true);
+IMPL_HANDLE_SIGNAL(SIGINT, false);
+IMPL_HANDLE_SIGNAL(SIGSEGV, true);
+IMPL_HANDLE_SIGNAL(SIGTERM, false);
 
 void init_signal_linux()
 {
-    printf("Initing signals\n");
-    // signal(SIGABRT, handle_signal);
-    // signal(SIGFPE, handle_signal);
-    // signal(SIGILL, handle_signal);
-    // signal(SIGINT, handle_signal);
-    // signal(SIGSEGV, handle_signal);
-    // signal(SIGTERM, handle_signal);
     signal(SIGABRT, handle_signal_SIGABRT);
     signal(SIGFPE, handle_signal_SIGFPE);
     signal(SIGILL, handle_signal_SIGILL);

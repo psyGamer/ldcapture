@@ -5,26 +5,27 @@
 typedef struct symbol_hook_t
 {
     const char *symbolName;
-    void *function;
-    void **origFunction;
+
+    void *address;
+    void **originalAddress;
 } symbol_hook_t;
 
-void hook_symbol(void *function, void **origFunction, const char *symbolName);
+typedef void *library_handle_t;
+
+void hook_symbol(void *address, void **originalAddress, const char *symbolName);
 
 void *load_orig_function(const char *origName);
 
+library_handle_t shared_library_open(const char *libraryName);
+void shared_library_close(library_handle_t handle);
+void *shared_library_get_symbol(library_handle_t handle, const char *symbolName);
+
 #ifdef PLAT_LINUX
 
-// name_fn_t:     Function pointer type to original functio
-// orig_name:     Function pointer to original functio
-// hook_symbol(): Let dlsym hook know of this overwrite
-// name:          Overwrite for LD_PRELOAD or loaded from dlsym
-// Load original if NULL
-// Call init to ensure initializing even from LD_PRELOAD.
-// init() is guarantied to be included since hook.h is included.
+// Setup everything for dlsym hook or LD_PRELOAD
 #define SYM_HOOK(ret, name, args, body)              \
     typedef ret (* name##_fn_t) args ;               \
-    static name##_fn_t orig_##name ;                 \
+    static name##_fn_t orig_##name = NULL;           \
     ret name args                                    \
     {                                                \
         if (orig_##name == NULL)                     \
