@@ -55,7 +55,8 @@
         "init.h": "c",
         "encoder_qoi.h": "c",
         "cstdlib": "c",
-        "system_error": "c"
+        "system_error": "c",
+        "base.h": "c"
     },
     
     "editor.tabSize": 4,

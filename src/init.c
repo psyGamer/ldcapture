@@ -31,6 +31,8 @@ void shutdown_ldcapture()
 
     shutdown_soundsys_fmod5();
 
+    while (!is_shutdown_done_ldcapture());
+
     TRACE("Shut down");
 
     initialized = false;
