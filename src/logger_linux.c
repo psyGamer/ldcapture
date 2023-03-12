@@ -16,7 +16,7 @@ void log_output(log_level_t level, const char *message, ...)
         "(ldcapture/debug): ", 
         "(ldcapture/trace): "
     };
-    const char *colorStrings[6] = {"1;41", "1;31", "0;33", "0;32", "0;34", "0;37"};
+    const char *colorStrings[6] = {"1;41", "1;31", "0;33", "0;32", "0;34", "0;90"};
 
     // Technically imposes a 32k character limit on a single log entry, but...
     // DON'T DO THAT!
@@ -32,8 +32,5 @@ void log_output(log_level_t level, const char *message, ...)
     vsnprintf(formatMessage, MAX_MSG_LENGTH, message, argPtr);
     va_end(argPtr);
 
-    char outputMessage[MAX_MSG_LENGTH];
-    sprintf(outputMessage, "%s%s\n", levelStrings[level], formatMessage);
-
-    printf("\033[%sm%s\033[0m", colorStrings[level], outputMessage);
+    printf("\033[%sm%s%s\033[0m\n", colorStrings[level], levelStrings[level], formatMessage);
 }

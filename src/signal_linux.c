@@ -6,6 +6,7 @@
 
 #include "init.h"
 
+#define MAX_BACKTRACE_DEPTH 64
 #define IMPL_HANDLE_SIGNAL(sig, printStack) \
     void handle_signal_##sig() \
     { \
@@ -16,13 +17,12 @@
         DEBUG("DONE"); \
         if (printStack) { \
             DEBUG("-- Stacktrace START --"); \
-            u32 cnt = 64; \
-            void **buf = calloc(cnt, sizeof(void *)); \
-            backtrace(buf, cnt); \
-            char **syms = backtrace_symbols(buf, cnt); \
-            for (i32 i = 0; i < cnt; i++) \
+            void **buf = calloc(MAX_BACKTRACE_DEPTH, sizeof(void *)); \
+            backtrace(buf, MAX_BACKTRACE_DEPTH); \
+            char **syms = backtrace_symbols(buf, MAX_BACKTRACE_DEPTH); \
+            for (i32 i = 0; i < MAX_BACKTRACE_DEPTH; i++) \
             { \
-                if (buf[i] == NULL) break; \
+                if (buf[i] == NULL) continue; \
                 DEBUG("%i: %s", i, syms[i]); \
             } \
             DEBUG("-- Stacktrace END --"); \

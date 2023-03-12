@@ -1,10 +1,13 @@
 #include "base.h"
 
+#include <time.h>
+
 #include "hook.h"
 
-static const u32 SECONDS_TO_TICKS = 1000000000;
+static const u32 SECONDS_TO_NANOSECONDS = 1000000000; // 10^9
+
 static const u32 TARGET_FPS = 60;
-static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS) * SECONDS_TO_TICKS);
+static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS) * SECONDS_TO_NANOSECONDS);
 
 static u32 currentFrame = 0;
 static u64 currentTimestamp = -1;
@@ -15,12 +18,54 @@ static bool fixedFPS = false;
 static bool videoDone = false;
 static bool soundDone = false;
 
-SYM_HOOK(uint64_t, SystemNative_GetTimestamp, (void),
+// Mono 4.6.0
+// SYM_HOOK(int64_t, mono_100ns_ticks, (void),
+// {
+//     INFO("Mono time");
+//     if (!fixedFPS) return orig_mono_100ns_ticks();
+//     if (currentTimestamp == -1) currentTimestamp = (u64)orig_mono_100ns_ticks();
+//     return currentTimestamp;
+// })
+
+// .NET Core
+SYM_HOOK(u64, SystemNative_GetTimestamp, (void),
 {
     if (!fixedFPS) return orig_SystemNative_GetTimestamp();
     if (currentTimestamp == -1) currentTimestamp = orig_SystemNative_GetTimestamp();
     return currentTimestamp;
 })
+
+// System Wide
+SYM_HOOK(i32, clock_gettime, (clockid_t clockID, struct timespec *ts),
+{
+    if (!fixedFPS) return orig_clock_gettime(clockID, ts);
+    // Use more specific hook if available
+    if (orig_SystemNative_GetTimestamp != NULL) return orig_clock_gettime(clockID, ts);
+
+    if (currentTimestamp == -1)
+    {
+        i32 result = orig_clock_gettime(clockID, ts);
+        currentTimestamp = ts->tv_sec * SECONDS_TO_NANOSECONDS + ts->tv_nsec;
+        return result;
+    }
+    else
+    {
+        ts->tv_sec  = currentTimestamp / SECONDS_TO_NANOSECONDS;
+        ts->tv_nsec = currentTimestamp % SECONDS_TO_NANOSECONDS;
+        return 0;
+    }
+})
+
+static u64 get_current_timestamp()
+{
+    // Use hooks if available
+    if (orig_SystemNative_GetTimestamp) return orig_SystemNative_GetTimestamp();
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    
+    return ts.tv_sec * SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
+}
 
 void timing_start()
 {
@@ -41,9 +86,9 @@ void timing_next_frame()
 {
     currentFrame++;
 
-    if (currentTimestamp == -1) currentTimestamp = orig_SystemNative_GetTimestamp();
+    if (currentTimestamp == -1) currentTimestamp = get_current_timestamp();
     currentTimestamp += TARGET_TIMESTEP_INC;
-    currentRealTimestamp = orig_SystemNative_GetTimestamp();
+    currentRealTimestamp = get_current_timestamp();
 
     videoDone = false;
     soundDone = false;
@@ -96,5 +141,6 @@ i32 timing_get_current_frame()
 
 void init_timing_linux()
 {
+    LOAD_SYM_HOOK(clock_gettime);
     LOAD_SYM_HOOK(SystemNative_GetTimestamp);
 }

@@ -26,6 +26,14 @@ static void init_dlsym()
 void *dlsym(void *handle, const char *name) {
     if (orig_dlsym == NULL) init_dlsym();
 
+    // TRACE("dlsym(%p, %s)", handle, name);
+
+    // If think load dlsym with dlsym (IDK why you'd every do this, but some programs do it so..)
+    if (strcmp(name, "dlsym") == 0)
+    {
+        return dlsym;
+    }
+
     for (i32 i = 0; i < hooked_symbol_index; i++)
     {
         symbol_hook_t *hook = &hooked_symbols[i];
@@ -33,6 +41,7 @@ void *dlsym(void *handle, const char *name) {
         {
             if (*hook->original_address == NULL) *hook->original_address = orig_dlsym(handle, name);
             if (hook->address != NULL) return hook->address;
+            TRACE("Hooked %s: New: %p | Old: %p", hook->symbol_name, hook->address, hook->original_address && *hook->original_address);
         }
     }
 
@@ -59,6 +68,8 @@ void *load_orig_function(const char *origName)
     void *orig = orig_dlsym(RTLD_NEXT, origName);
     if (orig == NULL)
         ERROR("Failed loading original function %s: %s", origName, dlerror());
+    else
+        TRACE("Successfully loaded original function %s", origName);
 
     return orig;
 }
@@ -74,13 +85,32 @@ library_handle_t shared_library_open(const char *libraryName)
 
     if (handle == NULL)
         ERROR("Failed loading library %s: %s", actualLibraryName, dlerror());
+    else
+        TRACE("Successfully loaded library %s", actualLibraryName);
 
     return handle;
 }
 
 void shared_library_close(library_handle_t handle)
 {
-    dlclose(handle);
+    struct link_map *map;
+    dlinfo(handle, RTLD_DI_LINKMAP, &map);
+
+    if (dlclose(handle) != 0)
+    {
+        if (map == NULL || map->l_name == NULL)
+            ERROR("Failed closing library <unknown>(%p): %s", handle, dlerror());
+        else
+            ERROR("Failed closing library %s(%p): %s", map->l_name, handle, dlerror());
+    }
+    else
+    {
+        if (map == NULL || map->l_name == NULL)
+            TRACE("Successfully closed library <unknown>(%p)", handle);
+        else
+            TRACE("Successfully closed library %s(%p)", map->l_name, handle);
+    }
+
 }
 
 void *shared_library_get_symbol(library_handle_t handle, const char *symbolName)
@@ -97,6 +127,13 @@ void *shared_library_get_symbol(library_handle_t handle, const char *symbolName)
             ERROR("Failed loading symbol %s from <unknown>(%p): %s", symbolName, handle, dlerror());
         else
             ERROR("Failed loading symbol %s from %s(%p): %s", symbolName, map->l_name, handle, dlerror());
+    }
+    else
+    {
+        if (map == NULL || map->l_name == NULL)
+            TRACE("Successfully loaded symbol %s from <unknown>(%p)", symbolName, handle);
+        else
+            TRACE("Successfully loaded symbol %s from %s(%p)", symbolName, map->l_name, handle);
     }
 
     return symbol;

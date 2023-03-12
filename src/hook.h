@@ -24,6 +24,7 @@ void *shared_library_get_symbol(library_handle_t handle, const char *symbolName)
 #ifdef PLATFORM_LINUX
 
 // Setup everything for dlsym hook or LD_PRELOAD
+
 #define SYM_HOOK(ret, name, args, body)              \
     typedef ret (* name##_fn_t) args ;               \
     static name##_fn_t orig_##name = NULL;           \

@@ -64,6 +64,7 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE *dspState, f32 *inBuffer
 FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
 {
     if (orig_FMOD_System_init == NULL) load_symbols();
+
     FMOD_RESULT result = orig_FMOD_System_init(system, maxchannels, flags, extradriverdata);
 
     if (result != FMOD_OK) return result;
@@ -92,6 +93,7 @@ FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INI
 FMOD_RESULT hook_FMOD_System_release(FMOD_SYSTEM *system)
 {
     if (orig_FMOD_System_release == NULL) load_symbols();
+
     FMOD_RESULT result = orig_FMOD_System_release(system);
 
     if (result != FMOD_OK) return result;
