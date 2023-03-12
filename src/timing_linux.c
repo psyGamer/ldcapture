@@ -18,15 +18,6 @@ static bool fixedFPS = false;
 static bool videoDone = false;
 static bool soundDone = false;
 
-// Mono 4.6.0
-// SYM_HOOK(int64_t, mono_100ns_ticks, (void),
-// {
-//     INFO("Mono time");
-//     if (!fixedFPS) return orig_mono_100ns_ticks();
-//     if (currentTimestamp == -1) currentTimestamp = (u64)orig_mono_100ns_ticks();
-//     return currentTimestamp;
-// })
-
 // .NET Core
 SYM_HOOK(u64, SystemNative_GetTimestamp, (void),
 {
@@ -62,7 +53,10 @@ static u64 get_current_timestamp()
     if (orig_SystemNative_GetTimestamp) return orig_SystemNative_GetTimestamp();
 
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    if (orig_clock_gettime != NULL)
+        orig_clock_gettime(CLOCK_MONOTONIC, &ts);
+    else
+        clock_gettime(CLOCK_MONOTONIC, &ts);
     
     return ts.tv_sec * SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
 }
@@ -123,10 +117,7 @@ bool timing_is_sound_done()
 
 bool timing_is_realtime_frame_done()
 {
-    if (orig_SystemNative_GetTimestamp == NULL) init_ldcapture();
-    return (orig_SystemNative_GetTimestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC;
-
-    return currentRealTimestamp == -1 || ((orig_SystemNative_GetTimestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC);
+    return currentRealTimestamp == -1 || ((get_current_timestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC);
 }
 
 i32 timing_get_target_fps()
