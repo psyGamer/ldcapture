@@ -116,12 +116,12 @@ static void *sound_worker(void *_)
         // We spin while waiting since we need to respond quickly
         if (!timing_is_running()) continue;
 
-        while (timing_is_sound_done());
+        while (timing_is_running() && run_sound_worker && timing_is_sound_done());
 
         // Wait a frame to sync again with the video
         if (total_recoded_samples_error >= target_recorded_samples)
         {
-            while (!timing_is_realtime_frame_done());
+            while (timing_is_running() && run_sound_worker && !timing_is_realtime_frame_done());
             total_recoded_samples_error -= target_recorded_samples;
             timing_sound_done();
             continue;
@@ -130,9 +130,10 @@ static void *sound_worker(void *_)
         recorded_samples = 0;
 
         fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-        while (recorded_samples == 0); // Wait for data
+        while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples); // Wait for data
         fn_FMOD_ChannelGroup_SetPaused(master_group, true);
 
+        // Usually we record more than a frame of data
         total_recoded_samples_error += recorded_samples - target_recorded_samples;
 
         timing_sound_done();
@@ -158,6 +159,7 @@ void init_sound_fmod5()
     hook_symbol(NULL, (void **)&fn_FMOD_ChannelGroup_SetPaused, "FMOD_ChannelGroup_SetPaused");
     hook_symbol(NULL, (void **)&fn_FMOD_DSP_Release, "FMOD_DSP_Release");
 
+    run_sound_worker = true;
     pthread_create(&sound_worker_thread, NULL, sound_worker, NULL);
 }
 
@@ -172,12 +174,14 @@ void shutdown_soundsys_fmod5()
         fclose(out_file);
 }
 
-// libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)
+// // libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)
 FMOD_RESULT _ZN4FMOD6System4initEijPv(FMOD_SYSTEM *system, i32 maxchannels, FMOD_INITFLAGS flags, void *extradriverdata)
 {
+    TRACE("FMOD init");
     return hook_FMOD_System_init(system, maxchannels, flags, extradriverdata);
 }
 FMOD_RESULT _ZN4FMOD6System7releaseEv(FMOD_SYSTEM *system)
 {
+    TRACE("FMOD release");
     return hook_FMOD_System_release(system);
 }
