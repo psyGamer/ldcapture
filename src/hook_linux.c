@@ -6,6 +6,8 @@
 #include <dlfcn.h>
 #include <link.h>
 
+#include "api.h"
+
 #define MAX_HOOKED_SYMBOLS 1024
 static i32 hooked_symbol_index = 0;
 static symbol_hook_t hooked_symbols[MAX_HOOKED_SYMBOLS];
@@ -23,12 +25,48 @@ static void init_dlsym()
     init_ldcapture(); // Before orig_dlsym gets loaded, nothing excpet LD_PRELOAD could've executed.
 }
 
+static bool catch_api_symbol(const char *name, void **outApiSymbol)
+{
+    if (strcmp(name, "ldcapture_StartRecording") == 0)
+    {
+        TRACE("Loaded API function: ldcapture_StartRecording");
+        *outApiSymbol = ldcapture_StartRecording;
+        return true;
+    }
+    if (strcmp(name, "ldcapture_StopRecording") == 0)
+    {
+        TRACE("Loaded API function: ldcapture_StopRecording");
+        *outApiSymbol = ldcapture_StopRecording;
+        return true;
+    }
+
+    // Slightly hacky way of invoking these functions by just loading a symbol
+    if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)
+    {
+        TRACE("Invoked API function: INVOKE_ldcapture_StartRecording");
+        *outApiSymbol = NULL;
+        ldcapture_StartRecording();
+        return true;
+    }
+    else if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
+    {
+        TRACE("Invoked API function: ldcapture_StopRecording");
+        *outApiSymbol = NULL;
+        ldcapture_StopRecording();
+        return true;
+    }
+    
+    return false;
+}
+
 void *dlsym(void *handle, const char *name) {
     if (orig_dlsym == NULL) init_dlsym();
 
-    // TRACE("dlsym(%p, %s)", handle, name);
+    void *apiSym = NULL;
+    if (catch_api_symbol(name, &apiSym))
+        return apiSym;
 
-    // If think load dlsym with dlsym (IDK why you'd every do this, but some programs do it so..)
+    // If something tries load dlsym with dlsym (IDK why you'd every do this, but some programs do it, so...)
     if (strcmp(name, "dlsym") == 0)
     {
         return dlsym;
