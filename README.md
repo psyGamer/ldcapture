@@ -26,7 +26,7 @@ Currently there are no prebuild binaries, so you'll have to compile from source.
 ## Controling ldcapture from the target application
 
 In order to control ldcapture you can use the API functions prowided.
-To get a function pointer for those API functions you can call `dlsym(_, apiFunctionName)` the first parameter is ignored. The second parameter is the API function name.
+To get a function pointer for those API functions you can call `dlsym(_, apiFunctionName)`. The first parameter is ignored. The second parameter is the API function name.
 
 If you can't use this function pointer to invoke it, you can prefix the `apiFunctionName` with `INVOKE_` in order to invoke the funcion directly. This will return `NULL` from `dlsym`.
 
@@ -49,7 +49,7 @@ You should specify the `LD_LIBRARY_PATH` to avoid Celeste restarting, which migh
 
 #### Linux
 
-`$ LD_PRELOAD="path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux ./Celeste"`
+`$ LD_PRELOAD="path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux" ./Celeste`
 
 ### Starting a recording
 
