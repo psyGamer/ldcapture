@@ -1,4 +1,4 @@
-#include "base.h"
+#include "timing.h"
 
 #include <time.h>
 
@@ -63,6 +63,7 @@ static u64 get_current_timestamp()
 
 void timing_start()
 {
+    INFO("Recording started");
     fixedFPS = true;
     currentFrame = 0;
     currentTimestamp = -1;
@@ -73,6 +74,7 @@ void timing_start()
 
 void timing_stop()
 {
+    INFO("Recording stopped");
     fixedFPS = false;
 }
 

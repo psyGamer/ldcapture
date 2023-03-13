@@ -16,6 +16,8 @@ static FMOD_RESULT (*fn_FMOD_System_GetMasterChannelGroup)(FMOD_SYSTEM *system, 
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_AddDSP)(FMOD_CHANNELGROUP *channelgroup, i32 index, FMOD_DSP *dsp)                 = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_RemoveDSP)(FMOD_CHANNELGROUP *channelgroup, FMOD_DSP *dsp)                         = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_SetPaused)(FMOD_CHANNELGROUP *channelgroup, FMOD_BOOL paused)                      = NULL;
+static FMOD_RESULT (*fn_FMOD_ChannelGroup_GetVolume)(FMOD_CHANNELGROUP *channelgroup, f32 *volume)                           = NULL;
+static FMOD_RESULT (*fn_FMOD_ChannelGroup_SetVolume)(FMOD_CHANNELGROUP *channelgroup, f32 volume)                            = NULL;
 static FMOD_RESULT (*fn_FMOD_DSP_Release)(FMOD_DSP *dsp)                                                                     = NULL;
 
 static void load_symbols()
@@ -30,6 +32,8 @@ static void load_symbols()
     fn_FMOD_ChannelGroup_AddDSP          = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_AddDSP");
     fn_FMOD_ChannelGroup_RemoveDSP       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_RemoveDSP");
     fn_FMOD_ChannelGroup_SetPaused       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_SetPaused");
+    fn_FMOD_ChannelGroup_GetVolume       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_GetVolume");
+    fn_FMOD_ChannelGroup_SetVolume       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_SetVolume");
     fn_FMOD_DSP_Release                  = shared_library_get_symbol(libfmod, "FMOD_DSP_Release");
 
     shared_library_close(libfmod);
@@ -51,9 +55,10 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE *dspState, f32 *inBuffer
     i32 size = max(inChannels, *outChannels) * length;
 
     memcpy(outBuffer, inBuffer, size * sizeof(f32));
-    recorded_samples += length;
 
-    if (inChannels != 2 || *outChannels != 2) return FMOD_OK;
+    if (!timing_is_running() || inChannels != 2 || *outChannels != 2) return FMOD_OK;
+
+    recorded_samples += length;
 
     fwrite(inBuffer, sizeof(f32), size, out_file);
     fflush(out_file);
@@ -107,6 +112,9 @@ FMOD_RESULT hook_FMOD_System_release(FMOD_SYSTEM *system)
 static bool run_sound_worker = true;
 static pthread_t sound_worker_thread = (pthread_t)NULL;
 
+static bool sound_paused = false;
+static f32 sound_volume = -1;
+
 static void *sound_worker(void *_)
 {
     TRACE("Started FMOD sound thread");
@@ -114,7 +122,17 @@ static void *sound_worker(void *_)
     while (run_sound_worker)
     {
         // We spin while waiting since we need to respond quickly
-        if (!timing_is_running()) continue;
+        if (!timing_is_running())
+        {
+            if (sound_paused)
+            {
+                if (sound_volume != -1)
+                    fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
+                fn_FMOD_ChannelGroup_SetPaused(master_group, false);
+                sound_paused = false;
+            }
+            continue;
+        }
 
         while (timing_is_running() && run_sound_worker && timing_is_sound_done());
 
@@ -129,9 +147,15 @@ static void *sound_worker(void *_)
 
         recorded_samples = 0;
 
+        // Setting volume to 0 should reduce sound artifacts
+        if (sound_volume != -1)
+            fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
         fn_FMOD_ChannelGroup_SetPaused(master_group, false);
         while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples); // Wait for data
+        fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
+        fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
         fn_FMOD_ChannelGroup_SetPaused(master_group, true);
+        sound_paused = true;
 
         // Usually we record more than a frame of data
         total_recoded_samples_error += recorded_samples - target_recorded_samples;

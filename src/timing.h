@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
+#include "base.h"
 
 void timing_start();
 void timing_stop();

@@ -74,10 +74,11 @@ static void capture_frame(Display *dpy)
 
 SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
 {
-    if (!timing_is_running()) timing_start();
-
-    timing_next_frame();
-    capture_frame(dpy);
+    if (timing_is_running())
+    {
+        timing_next_frame();
+        capture_frame(dpy);
+    }
 
     orig_glXSwapBuffers(dpy, drawable);
 })
