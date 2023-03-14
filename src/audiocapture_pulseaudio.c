@@ -1,3 +1,5 @@
+#ifdef DEPRECATED_SOUND_PULSEAUDIO
+
 #include "base.h"
 #include "timing.h"
 #include "util/pulse_wrapper.h"
@@ -776,3 +778,5 @@ bool is_shutdown_done_audiocapture_pulseaudio()
 {
     return shut2;
 }
+
+#endif // DEPRECATED_SOUND_PULSEAUDIO
