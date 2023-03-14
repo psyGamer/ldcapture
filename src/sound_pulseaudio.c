@@ -626,7 +626,7 @@ static bool init2 = false;
 static bool shut1 = false;
 static bool shut2 = false;
 
-static void audiocapture_pulseaudio_update(void* userdata)
+static void sound_pulseaudio_update(void* userdata)
 {
     if (init2) return;
 
@@ -704,7 +704,7 @@ static void audiocapture_pulseaudio_update(void* userdata)
     init2 = true;
 }
 
-void init_audiocapture_pulseaudio()
+void init_sound_pulseaudio()
 {
     TRACE("-------------");
     if (!init1)
@@ -724,11 +724,11 @@ void init_audiocapture_pulseaudio()
         init1 = true;
     }
     TRACE("calling update");
-    audiocapture_pulseaudio_update(gdata);
+    sound_pulseaudio_update(gdata);
     TRACE("finished updating from create");
 }
 
-void shutdown_audiocapture_pulseaudio()
+void shutdown_sound_pulseaudio()
 {
     TRACE("Trying to shut down");
     if (shut1 || shut2) return;
@@ -774,7 +774,7 @@ void shutdown_audiocapture_pulseaudio()
     TRACE("Successful shut down");
 }
 
-bool is_shutdown_done_audiocapture_pulseaudio()
+bool is_shutdown_done_sound_pulseaudio()
 {
     return shut2;
 }

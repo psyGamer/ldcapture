@@ -11,13 +11,15 @@ bool is_shutdown_done_ldcapture();
 void init_video_opengl_x11();
 
 // sound_fmod.c
-void init_sound_fmod5();
-void shutdown_soundsys_fmod5();
+void init_sound_fmod();
+void shutdown_sound_fmod();
 
-// audiocapture_pulseaudio.c
-void init_audiocapture_pulseaudio();
-void shutdown_audiocapture_pulseaudio();
-bool is_shutdown_done_audiocapture_pulseaudio();
+#ifdef DEPRECATED_SOUND_PULSEAUDIO
+    // sound_pulseaudio.c
+    void init_sound_pulseaudio();
+    void shutdown_sound_pulseaudio();
+    bool is_shutdown_done_sound_pulseaudio();
+#endif // DEPRECATED_SOUND_PULSEAUDIO
 
 // timing_linux.c
 void init_timing_linux();

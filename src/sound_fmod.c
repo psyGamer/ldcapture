@@ -170,7 +170,7 @@ static void* sound_worker(void* _)
     return NULL;
 }
 
-void init_sound_fmod5()
+void init_sound_fmod()
 {
     hook_symbol(hook_FMOD_System_init, (void** )&orig_FMOD_System_init, "_ZN4FMOD6System4initEijPv");
     hook_symbol(hook_FMOD_System_release, (void** )&orig_FMOD_System_release, "_ZN4FMOD6System7releaseEv");
@@ -187,7 +187,7 @@ void init_sound_fmod5()
     pthread_create(&sound_worker_thread, NULL, sound_worker, NULL);
 }
 
-void shutdown_soundsys_fmod5()
+void shutdown_sound_fmod()
 {
     run_sound_worker = false;
     
@@ -198,7 +198,7 @@ void shutdown_soundsys_fmod5()
         fclose(out_file);
 }
 
-// // libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)
+// libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)
 FMOD_RESULT _ZN4FMOD6System4initEijPv(FMOD_SYSTEM* system, i32 maxchannels, FMOD_INITFLAGS flags, void* extradriverdata)
 {
     TRACE("FMOD init");

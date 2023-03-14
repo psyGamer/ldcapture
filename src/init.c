@@ -10,7 +10,7 @@ void init_ldcapture()
 
     init_video_opengl_x11();
 
-    init_sound_fmod5();
+    init_sound_fmod();
 
     init_timing_linux();
     
@@ -29,7 +29,7 @@ void shutdown_ldcapture()
 
     TRACE("Shutting down...");
 
-    shutdown_soundsys_fmod5();
+    shutdown_sound_fmod();
 
     while (!is_shutdown_done_ldcapture());
 
