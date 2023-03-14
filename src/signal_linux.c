@@ -60,7 +60,7 @@ static void sigact(i32 signal, siginfo_t* info, void* ucontext)
     {
         DEBUG("-- Stacktrace START --");
 
-        void* *buffer = calloc(MAX_BACKTRACE_DEPTH, sizeof(void* ));
+        void* *buffer = calloc(MAX_BACKTRACE_DEPTH, sizeof(void*));
         backtrace(buffer, MAX_BACKTRACE_DEPTH); \
         char* *symbols = backtrace_symbols(buffer, MAX_BACKTRACE_DEPTH);
 

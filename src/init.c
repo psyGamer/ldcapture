@@ -8,12 +8,12 @@ void init_ldcapture()
 
     TRACE("Initializing...");
 
-    init_video_opengl_x11();
+    init_encoder();
 
+    init_video_opengl_x11();
     init_sound_fmod();
 
     init_timing_linux();
-    
     init_signal_linux();
 
     atexit(shutdown_ldcapture);

@@ -99,11 +99,13 @@ bool timing_is_running()
 
 void timing_mark_video_ready()
 {
+    INFO("Video ready");
     videoReady = true;
 }
 
 void timing_mark_sound_done()
 {
+    INFO("Sound done");
     soundDone = true;
 }
 

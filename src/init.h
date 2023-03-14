@@ -7,6 +7,10 @@ bool is_initialized_ldcapture();
 void shutdown_ldcapture();
 bool is_shutdown_done_ldcapture();
 
+// encoder.c
+void init_encoder();
+void shutdown_encoder();
+
 // video_opengl_x11.c
 void init_video_opengl_x11();
 

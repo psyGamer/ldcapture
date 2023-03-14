@@ -16,7 +16,6 @@
 #include "encoder.h"
 #include "timing.h"
 
-static encoder_t* encoder;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void capture_frame(Display* dpy)
@@ -29,7 +28,8 @@ static void capture_frame(Display* dpy)
     XWindowAttributes attr = {0};
     XGetWindowAttributes(dpy, window, &attr);
 
-    encoder_resize(encoder, attr.width, attr.height);
+    encoder_t* encoder = encoder_get_current();
+    encoder_prepare_video(encoder, attr.width, attr.height);
 
     pthread_mutex_lock(&mutex);
 
@@ -45,13 +45,13 @@ static void capture_frame(Display* dpy)
     glGetIntegerv(GL_READ_BUFFER,(GLint*) &oldReadBuffer);
     glReadBuffer(GL_FRONT);
 
-    glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, encoder->data);
+    glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, encoder->video_data);
     
     // Flip the image (https://codereview.stackexchange.com/q/29618)
     const size_t rowStride = attr.width*  4;
     unsigned char* tempRow = malloc(rowStride);
-    unsigned char* low  = encoder->data;
-    unsigned char* high = encoder->data + (attr.height - 1)*  rowStride;
+    unsigned char* low  = encoder->video_data;
+    unsigned char* high = encoder->video_data + (attr.height - 1)*  rowStride;
 
     for (; low < high; low += rowStride, high -= rowStride) {
         memcpy(tempRow, low, rowStride);
@@ -61,7 +61,7 @@ static void capture_frame(Display* dpy)
 
     free(tempRow);
 
-    encoder_save_frame(encoder);
+    encoder_flush_video(encoder);
     
     timing_mark_video_ready();
     while (!timing_is_sound_done()); // Wait for sound
@@ -94,14 +94,14 @@ SYM_HOOK(void, glXDestroyWindow, (Display* dpy, GLXWindow window),
 
 SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte* procName),
 {
-    if (strcmp((const char* )procName, "glXSwapBuffers") == 0)
+    if (strcmp((const char*)procName, "glXSwapBuffers") == 0)
     {
-        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte* )"glXSwapBuffers");
+        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte*)"glXSwapBuffers");
         return (__GLXextFuncPtr)glXSwapBuffers;
     }
-    if (strcmp((const char* )procName, "glXDestroyWindow") == 0)
+    if (strcmp((const char*)procName, "glXDestroyWindow") == 0)
     {
-        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte* )"glXDestroyWindow");
+        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte*)"glXDestroyWindow");
         return (__GLXextFuncPtr)glXDestroyWindow;
     }
 
@@ -110,8 +110,6 @@ SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte* procName),
 
 void init_video_opengl_x11()
 {
-    encoder = encoder_create(ENCODER_TYPE_QOI);
-
     LOAD_SYM_HOOK(glXSwapBuffers);
     LOAD_SYM_HOOK(glXDestroyWindow);
     LOAD_SYM_HOOK(glXGetProcAddressARB);

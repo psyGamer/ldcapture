@@ -13,7 +13,7 @@ static i32 hooked_symbol_index = 0;
 static symbol_hook_t hooked_symbols[MAX_HOOKED_SYMBOLS];
 
 // Let's hope this doesn't catch fire..
-static void* (*orig_dlsym)(void* , const char* ) = NULL;
+static void* (*orig_dlsym)(void* , const char*) = NULL;
 
 static void init_dlsym()
 {
