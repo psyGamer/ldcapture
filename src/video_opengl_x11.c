@@ -16,10 +16,10 @@
 #include "encoder.h"
 #include "timing.h"
 
-static encoder_t *encoder;
+static encoder_t* encoder;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void capture_frame(Display *dpy)
+static void capture_frame(Display* dpy)
 {
     GLXDrawable drawable = glXGetCurrentDrawable();
     Window window = (Window)drawable;
@@ -48,10 +48,10 @@ static void capture_frame(Display *dpy)
     glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, encoder->data);
     
     // Flip the image (https://codereview.stackexchange.com/q/29618)
-    const size_t rowStride = attr.width * 4;
-    unsigned char *tempRow = malloc(rowStride);
-    unsigned char *low  = encoder->data;
-    unsigned char *high = encoder->data + (attr.height - 1) * rowStride;
+    const size_t rowStride = attr.width*  4;
+    unsigned char* tempRow = malloc(rowStride);
+    unsigned char* low  = encoder->data;
+    unsigned char* high = encoder->data + (attr.height - 1)*  rowStride;
 
     for (; low < high; low += rowStride, high -= rowStride) {
         memcpy(tempRow, low, rowStride);
@@ -72,7 +72,7 @@ static void capture_frame(Display *dpy)
     pthread_mutex_unlock(&mutex);
 }
 
-SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
+SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 {
     if (timing_is_running())
     {
@@ -83,22 +83,22 @@ SYM_HOOK(void, glXSwapBuffers, (Display *dpy, GLXDrawable drawable),
     orig_glXSwapBuffers(dpy, drawable);
 })
 
-SYM_HOOK(void, glXDestroyWindow, (Display *dpy, GLXWindow window),
+SYM_HOOK(void, glXDestroyWindow, (Display* dpy, GLXWindow window),
 {
     shutdown_ldcapture();
     orig_glXDestroyWindow(dpy, window);
 })
 
-SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte *procName),
+SYM_HOOK(__GLXextFuncPtr, glXGetProcAddressARB, (const GLubyte* procName),
 {
-    if (strcmp((const char *)procName, "glXSwapBuffers") == 0)
+    if (strcmp((const char* )procName, "glXSwapBuffers") == 0)
     {
-        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXSwapBuffers");
+        orig_glXSwapBuffers = (glXSwapBuffers_fn_t)orig_glXGetProcAddressARB((const GLubyte* )"glXSwapBuffers");
         return (__GLXextFuncPtr)glXSwapBuffers;
     }
-    if (strcmp((const char *)procName, "glXDestroyWindow") == 0)
+    if (strcmp((const char* )procName, "glXDestroyWindow") == 0)
     {
-        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte *)"glXDestroyWindow");
+        orig_glXDestroyWindow = (glXDestroyWindow_fn_t)orig_glXGetProcAddressARB((const GLubyte* )"glXDestroyWindow");
         return (__GLXextFuncPtr)glXDestroyWindow;
     }
 

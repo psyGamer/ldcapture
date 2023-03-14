@@ -19,7 +19,7 @@ typedef struct combine_module_t
 
 typedef struct pulse_data_t
 {
-    pa_stream *stream;
+    pa_stream* stream;
 
     /* client info */
     char* clientName;
@@ -32,13 +32,13 @@ typedef struct pulse_data_t
     /* sink input info */
     u32 sinkInputIndex;
     u32 sinkInputSinkIndex;
-    char *sinkInputSinkName;
+    char* sinkInputSinkName;
 
     i32 moveSuccess;
 
     /* combine module info */
     // maps from sink input sink index to combine module index
-    cmap_module *combineModules;
+    cmap_module* combineModules;
     i32 loadModuleSuccess;
     u32 nextOwnerModuleIndex;
 
@@ -54,13 +54,13 @@ typedef struct pulse_data_t
     u64 frames;
 } pulse_data_t;
 
-static void load_new_module(pulse_data_t *data);
-static bool move_to_combine_module(pulse_data_t *data);
-static void pulse_stop_recording(pulse_data_t *data);
+static void load_new_module(pulse_data_t* data);
+static bool move_to_combine_module(pulse_data_t* data);
+static void pulse_stop_recording(pulse_data_t* data);
 
-void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i, i32 eol, void *userdata)
+void update_sink_input_info_callback(pa_context* c, const pa_sink_input_info* i, i32 eol, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if (eol || i->index == PA_INVALID_INDEX)
     {
@@ -88,9 +88,9 @@ void update_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i,
     pulse_signal(0);
 }
 
-static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u32 idx, void *userdata)
+static void sink_event_callback(pa_context* c, pa_subscription_event_type_t t, u32 idx, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if ((t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK) == PA_SUBSCRIPTION_EVENT_SINK_INPUT)
     {
@@ -102,7 +102,7 @@ static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u
             // this callback on a helper thread and not the main
             // thread
             // Check if sink-input corresponds to the client
-            pa_operation *op = pa_context_get_sink_input_info(c, idx, update_sink_input_info_callback, data);
+            pa_operation* op = pa_context_get_sink_input_info(c, idx, update_sink_input_info_callback, data);
             if (!op)
             {
                 pulse_signal(0);
@@ -127,17 +127,17 @@ static void sink_event_callback(pa_context *c, pa_subscription_event_type_t t, u
     pulse_signal(0);
 }
 
-static void move_sink_input_callback(pa_context *c, i32 success, void *userdata)
+static void move_sink_input_callback(pa_context* c, i32 success, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
     data->moveSuccess = success;
 
     pulse_signal(0);
 }
 
-static void get_client_index_callback(pa_context *c, const pa_client_info *i, i32 eol, void *userdata)
+static void get_client_index_callback(pa_context* c, const pa_client_info* i, i32 eol, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if (eol || i->index == PA_INVALID_INDEX)
     {
@@ -152,9 +152,9 @@ static void get_client_index_callback(pa_context *c, const pa_client_info *i, i3
     }
 }
 
-static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *info, i32 eol, void *userdata)
+static void get_sink_input_callback(pa_context* c, const pa_sink_input_info* info, i32 eol, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if (eol || info->index == PA_INVALID_INDEX || data->sinkInputIndex != PA_INVALID_INDEX)
     {
@@ -175,9 +175,9 @@ static void get_sink_input_callback(pa_context *c, const pa_sink_input_info *inf
     }
 }
 
-static void get_sink_name_by_index_callback(pa_context *c, const pa_sink_info *i, i32 eol, void *userdata)
+static void get_sink_name_by_index_callback(pa_context* c, const pa_sink_info* i, i32 eol, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if (eol || i->index == PA_INVALID_INDEX)
     {
@@ -188,9 +188,9 @@ static void get_sink_name_by_index_callback(pa_context *c, const pa_sink_info *i
     }
 }
 
-static void load_new_module_callback(pa_context *c, u32 idx, void *userdata)
+static void load_new_module_callback(pa_context* c, u32 idx, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     TRACE("new module idx %d", idx);
     if (idx != PA_INVALID_INDEX)
@@ -205,9 +205,9 @@ static void load_new_module_callback(pa_context *c, u32 idx, void *userdata)
     pulse_signal(0);
 }
 
-static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, i32 eol, void *userdata)
+static void get_sink_id_by_owner_callback(pa_context* c, const pa_sink_info* i, i32 eol, void* userdata)
 {
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     if (eol || i->index == PA_INVALID_INDEX)
     {
@@ -217,7 +217,7 @@ static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, 
     TRACE("Combine module callback: i->index:%i sinkInputSinkIndex:%i nextOwnerModuleIndex:%i", i->index, data->sinkInputSinkIndex, data->nextOwnerModuleIndex);
     if (data->nextOwnerModuleIndex == i->owner_module)
     {
-        combine_module_t *newModule = malloc(sizeof(combine_module_t));
+        combine_module_t* newModule = malloc(sizeof(combine_module_t));
         newModule->moduleIndex = i->index;
         newModule->ownerModuleIndex = data->nextOwnerModuleIndex;
         TRACE("New combine module: moduleIndex:%i ownerModuleIndex:%i sinkInputSinkIndex:%i", newModule->moduleIndex, newModule->ownerModuleIndex, data->sinkInputSinkIndex);
@@ -225,13 +225,13 @@ static void get_sink_id_by_owner_callback(pa_context *c, const pa_sink_info *i, 
     }
 }
 
-static void unload_module_callback(pa_context *c, i32 success, void *userdata)
+static void unload_module_callback(pa_context* c, i32 success, void* userdata)
 {
     TRACE("module unload success: %d", success);
     pulse_signal(0);
 }
 
-static bool restore_sink(pulse_data_t *data)
+static bool restore_sink(pulse_data_t* data)
 {
     // Move existing sink-input back to old sink
     if (data->sinkInputIndex != PA_INVALID_INDEX && data->sinkInputSinkIndex != PA_INVALID_INDEX)
@@ -252,7 +252,7 @@ static bool restore_sink(pulse_data_t *data)
 }
 
 
-static bool get_sink_input(pulse_data_t *data)
+static bool get_sink_input(pulse_data_t* data)
 {
     // Find sink-input with corresponding client
     data->sinkInputIndex = PA_INVALID_INDEX;
@@ -268,7 +268,7 @@ static bool get_sink_input(pulse_data_t *data)
     return true;
 }
 
-static void load_new_module(pulse_data_t *data)
+static void load_new_module(pulse_data_t* data)
 {
     TRACE("looking for %d", data->sinkInputSinkIndex);
 
@@ -302,7 +302,7 @@ static void load_new_module(pulse_data_t *data)
     }
 }
 
-static bool move_to_combine_module(pulse_data_t *data)
+static bool move_to_combine_module(pulse_data_t* data)
 {
     // Move sink-input to new module
     data->moveSuccess = 1;
@@ -327,22 +327,22 @@ static bool move_to_combine_module(pulse_data_t *data)
     return true;
 }
 
-static FILE *out_file = NULL;
+static FILE* out_file = NULL;
 
 /**
  * Callback for pulse which gets executed when new audio data is available
  *
  * @warning The function may be called even after disconnecting the stream
  */
-static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
+static void pulse_stream_read(pa_stream* p, size_t nbytes, void* userdata)
 {
     UNUSED_PARAMETER(p);
     UNUSED_PARAMETER(nbytes);
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
 
     TRACE("Getting data");
 
-    int16_t *paData = NULL;
+    int16_t* paData = NULL;
     size_t bytes = 0;
     if (pa_stream_peek(data->stream, (const void**)&paData, &bytes) != 0)
     {
@@ -383,7 +383,7 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
         return;
     }
 
-    // const void *frames;
+    // const void* frames;
     // size_t bytes;
 
     // if (!data->stream)
@@ -409,7 +409,7 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
     // out.speakers = data->speakers;
     // out.samples_per_sec = data->samples_per_sec;
     // out.format = pulse_to_obs_audio_format(data->format);
-    // out.data[0] = (uint8_t *)frames;
+    // out.data[0] = (uint8_t*)frames;
     // out.frames = bytes / data->bytes_per_frame;
     // out.timestamp = get_sample_time(out.frames, out.samples_per_sec);
 
@@ -485,10 +485,10 @@ static pa_channel_map pulse_channel_map()
     return ret;
 }
 
-static void pulse_source_info(pa_context *c, const pa_source_info *i, i32 eol, void *userdata)
+static void pulse_source_info(pa_context* c, const pa_source_info* i, i32 eol, void* userdata)
 {
     UNUSED_PARAMETER(c);
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
     // An error occured
     if (eol < 0)
     {
@@ -503,7 +503,7 @@ static void pulse_source_info(pa_context *c, const pa_source_info *i, i32 eol, v
         return;
     }
 
-    pa_proplist *proplist = i->proplist;
+    pa_proplist* proplist = i->proplist;
 
     TRACE("Audio format: %s, %u Hz, %u channels",
         pa_sample_format_to_string(i->sample_spec.format),
@@ -532,7 +532,7 @@ static void pulse_source_info(pa_context *c, const pa_source_info *i, i32 eol, v
     data->channels = channels;
 }
 
-static int_fast32_t pulse_start_recording(pulse_data_t *data)
+static int_fast32_t pulse_start_recording(pulse_data_t* data)
 {
     char monitorName[1024];
     sprintf(monitorName, "ldcaptureRecord%s.monitor", data->sinkInputSinkName);
@@ -573,7 +573,7 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
     }
 
     pulse_lock();
-    pa_stream_set_read_callback(data->stream, pulse_stream_read, (void *)data);
+    pa_stream_set_read_callback(data->stream, pulse_stream_read, (void*)data);
     pulse_unlock();
 
     pa_buffer_attr attr;
@@ -599,7 +599,7 @@ static int_fast32_t pulse_start_recording(pulse_data_t *data)
     return 0;
 }
 
-static void pulse_stop_recording(pulse_data_t *data)
+static void pulse_stop_recording(pulse_data_t* data)
 {
     if (data->stream)
     {
@@ -618,17 +618,17 @@ static void pulse_stop_recording(pulse_data_t *data)
     data->frames = 0;
 }
 
-static pulse_data_t *gdata = NULL;
+static pulse_data_t* gdata = NULL;
 static bool init1 = false;
 static bool init2 = false;
 static bool shut1 = false;
 static bool shut2 = false;
 
-static void audiocapture_pulseaudio_update(void *userdata)
+static void audiocapture_pulseaudio_update(void* userdata)
 {
     if (init2) return;
 
-    pulse_data_t *data = (pulse_data_t *)userdata;
+    pulse_data_t* data = (pulse_data_t*)userdata;
     bool restart = false;
 
     restart = true;
@@ -637,7 +637,7 @@ static void audiocapture_pulseaudio_update(void *userdata)
     // data->clientName = "Firefox";
 
     /*
-    const char *newClient;
+    const char* newClient;
 
     newClient = obs_data_get_string(settings, "client");
     printf("new client: %s\n", new_client);
@@ -733,7 +733,7 @@ void shutdown_audiocapture_pulseaudio()
     TRACE("Starting shut down");
     shut1 = true;
 
-    pulse_data_t *data = (pulse_data_t *)gdata;
+    pulse_data_t* data = (pulse_data_t*)gdata;
 
     if (data->stream) pulse_stop_recording(data);
 

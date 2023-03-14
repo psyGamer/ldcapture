@@ -13,7 +13,7 @@ static i32 hooked_symbol_index = 0;
 static symbol_hook_t hooked_symbols[MAX_HOOKED_SYMBOLS];
 
 // Let's hope this doesn't catch fire..
-static void *(*orig_dlsym)(void *, const char *) = NULL;
+static void* (*orig_dlsym)(void* , const char* ) = NULL;
 
 static void init_dlsym()
 {
@@ -25,18 +25,18 @@ static void init_dlsym()
     init_ldcapture(); // Before orig_dlsym gets loaded, nothing excpet LD_PRELOAD could've executed.
 }
 
-static bool catch_api_symbol(const char *name, void **outApiSymbol)
+static bool catch_api_symbol(const char* name, void* *outApiSymbol)
 {
     if (strcmp(name, "ldcapture_StartRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StartRecording");
-        *outApiSymbol = ldcapture_StartRecording;
+       * outApiSymbol = ldcapture_StartRecording;
         return true;
     }
     if (strcmp(name, "ldcapture_StopRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StopRecording");
-        *outApiSymbol = ldcapture_StopRecording;
+       * outApiSymbol = ldcapture_StopRecording;
         return true;
     }
 
@@ -44,14 +44,14 @@ static bool catch_api_symbol(const char *name, void **outApiSymbol)
     if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)
     {
         TRACE("Invoked API function: INVOKE_ldcapture_StartRecording");
-        *outApiSymbol = NULL;
+       * outApiSymbol = NULL;
         ldcapture_StartRecording();
         return true;
     }
     else if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
     {
         TRACE("Invoked API function: ldcapture_StopRecording");
-        *outApiSymbol = NULL;
+       * outApiSymbol = NULL;
         ldcapture_StopRecording();
         return true;
     }
@@ -59,10 +59,10 @@ static bool catch_api_symbol(const char *name, void **outApiSymbol)
     return false;
 }
 
-void *dlsym(void *handle, const char *name) {
+void* dlsym(void* handle, const char* name) {
     if (orig_dlsym == NULL) init_dlsym();
 
-    void *apiSym = NULL;
+    void* apiSym = NULL;
     if (catch_api_symbol(name, &apiSym))
         return apiSym;
 
@@ -74,19 +74,19 @@ void *dlsym(void *handle, const char *name) {
 
     for (i32 i = 0; i < hooked_symbol_index; i++)
     {
-        symbol_hook_t *hook = &hooked_symbols[i];
+        symbol_hook_t* hook = &hooked_symbols[i];
         if (strcmp(hook->symbol_name, name) == 0)
         {
-            if (*hook->original_address == NULL) *hook->original_address = orig_dlsym(handle, name);
+            if (*hook->original_address == NULL)* hook->original_address = orig_dlsym(handle, name);
             if (hook->address != NULL) return hook->address;
-            TRACE("Hooked %s: New: %p | Old: %p", hook->symbol_name, hook->address, hook->original_address && *hook->original_address);
+            TRACE("Hooked %s: New: %p | Old: %p", hook->symbol_name, hook->address, hook->original_address &&* hook->original_address);
         }
     }
 
     return orig_dlsym(handle, name);
 }
 
-void hook_symbol(void *address, void **originalAddress, const char *symbolName)
+void hook_symbol(void* address, void* *originalAddress, const char* symbolName)
 {
     if (hooked_symbol_index >= MAX_HOOKED_SYMBOLS)
     {
@@ -99,11 +99,11 @@ void hook_symbol(void *address, void **originalAddress, const char *symbolName)
     hooked_symbols[hooked_symbol_index++] = hook;
 }
 
-void *load_orig_function(const char *origName)
+void* load_orig_function(const char* origName)
 {
     if (orig_dlsym == NULL) init_dlsym();
 
-    void *orig = orig_dlsym(RTLD_NEXT, origName);
+    void* orig = orig_dlsym(RTLD_NEXT, origName);
     if (orig == NULL)
         ERROR("Failed loading original function %s: %s", origName, dlerror());
     else
@@ -112,7 +112,7 @@ void *load_orig_function(const char *origName)
     return orig;
 }
 
-library_handle_t shared_library_open(const char *libraryName)
+library_handle_t shared_library_open(const char* libraryName)
 {
     // On Linux a shared library usually has the format lib<name>.so
     // If the name is longer than 1024 characters, I have different concerns..
@@ -131,7 +131,7 @@ library_handle_t shared_library_open(const char *libraryName)
 
 void shared_library_close(library_handle_t handle)
 {
-    struct link_map *map;
+    struct link_map* map;
     dlinfo(handle, RTLD_DI_LINKMAP, &map);
 
     if (dlclose(handle) != 0)
@@ -151,14 +151,14 @@ void shared_library_close(library_handle_t handle)
 
 }
 
-void *shared_library_get_symbol(library_handle_t handle, const char *symbolName)
+void* shared_library_get_symbol(library_handle_t handle, const char* symbolName)
 {
     if (orig_dlsym == NULL) init_dlsym();
 
-    struct link_map *map;
+    struct link_map* map;
     dlinfo(handle, RTLD_DI_LINKMAP, &map);
 
-    void *symbol = orig_dlsym(handle, symbolName);
+    void* symbol = orig_dlsym(handle, symbolName);
     if (symbol == NULL)
     {
         if (map == NULL || map->l_name == NULL)

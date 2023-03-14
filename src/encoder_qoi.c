@@ -10,21 +10,21 @@
 #define QOI_IMPLEMENTATION
 #include <qoi.h>
 
-void encoder_qoi_create(encoder_qoi_t *encoder)
+void encoder_qoi_create(encoder_qoi_t* encoder)
 {
     // Create "frames" directory if doesn't exist
     struct stat st = { 0 };
     if (stat("./frames", &st) == -1) mkdir("./frames", 0700);
 }
 
-void encoder_qoi_destory(encoder_qoi_t *encoder)
+void encoder_qoi_destory(encoder_qoi_t* encoder)
 {
     fclose(encoder->out_file);
 }
 
-void encoder_qoi_save_frame(encoder_qoi_t *encoder)
+void encoder_qoi_save_frame(encoder_qoi_t* encoder)
 {
-    size_t stride = encoder->channels * encoder->width;
+    size_t stride = encoder->channels*  encoder->width;
     stride += (stride % 4) ? (4 - stride % 4) : 0;
 
     i32 length;

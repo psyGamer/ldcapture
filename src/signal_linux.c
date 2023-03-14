@@ -13,10 +13,10 @@ static struct sigaction orig_SIGINT_act;
 static struct sigaction orig_SIGSEGV_act;
 static struct sigaction orig_SIGTERM_act;
 
-static void sigact(i32 signal, siginfo_t *info, void *ucontext)
+static void sigact(i32 signal, siginfo_t* info, void* ucontext)
 {
     const char* signalName = NULL;
-    struct sigaction *origAct;
+    struct sigaction* origAct;
     bool printStacktrace = false;
 
     switch (signal)
@@ -60,9 +60,9 @@ static void sigact(i32 signal, siginfo_t *info, void *ucontext)
     {
         DEBUG("-- Stacktrace START --");
 
-        void **buffer = calloc(MAX_BACKTRACE_DEPTH, sizeof(void *));
+        void* *buffer = calloc(MAX_BACKTRACE_DEPTH, sizeof(void* ));
         backtrace(buffer, MAX_BACKTRACE_DEPTH); \
-        char **symbols = backtrace_symbols(buffer, MAX_BACKTRACE_DEPTH);
+        char* *symbols = backtrace_symbols(buffer, MAX_BACKTRACE_DEPTH);
 
         for (i32 i = 0; i < MAX_BACKTRACE_DEPTH; i++)
         {

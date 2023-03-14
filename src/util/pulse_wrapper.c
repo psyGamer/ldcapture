@@ -34,8 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /* global data */
 static uint_fast32_t pulse_refs = 0;
 static pthread_mutex_t pulse_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pa_threaded_mainloop *pulse_mainloop = NULL;
-static pa_context *pulse_context = NULL;
+static pa_threaded_mainloop* pulse_mainloop = NULL;
+static pa_context* pulse_context = NULL;
 
 /**
  * context status change callback
@@ -43,7 +43,7 @@ static pa_context *pulse_context = NULL;
  * @todo this is currently a noop, we want to reconnect here if the connection
  *       is lost
  */
-static void pulse_context_state_changed(pa_context *c, void *userdata)
+static void pulse_context_state_changed(pa_context* c, void* userdata)
 {
     UNUSED_PARAMETER(userdata);
     UNUSED_PARAMETER(c);
@@ -54,9 +54,9 @@ static void pulse_context_state_changed(pa_context *c, void *userdata)
 /**
  * get the default properties
  */
-static pa_proplist *pulse_properties()
+static pa_proplist* pulse_properties()
 {
-    pa_proplist *p = pa_proplist_new();
+    pa_proplist* p = pa_proplist_new();
 
     pa_proplist_sets(p, PA_PROP_APPLICATION_NAME, "ldcapture");
     // pa_proplist_sets(p, PA_PROP_APPLICATION_ICON_NAME, "obs");
@@ -72,7 +72,7 @@ static void pulse_init_context()
 {
     pulse_lock();
 
-    pa_proplist *p = pulse_properties();
+    pa_proplist* p = pulse_properties();
     pulse_context = pa_context_new_with_proplist(
         pa_threaded_mainloop_get_api(pulse_mainloop), "ldcapture", p);
 
@@ -194,14 +194,14 @@ void pulse_accept()
     pa_threaded_mainloop_accept(pulse_mainloop);
 }
 
-int_fast32_t pulse_get_client_info_list(pa_client_info_cb_t cb, void *userdata)
+int_fast32_t pulse_get_client_info_list(pa_client_info_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op = pa_context_get_client_info_list(pulse_context, cb, userdata);
+    pa_operation* op = pa_context_get_client_info_list(pulse_context, cb, userdata);
     if (!op)
     {
         pulse_unlock();
@@ -216,14 +216,14 @@ int_fast32_t pulse_get_client_info_list(pa_client_info_cb_t cb, void *userdata)
     return 0;
 }
 
-int_fast32_t pulse_get_source_info_by_name(pa_source_info_cb_t cb, const char *name, void *userdata)
+int_fast32_t pulse_get_source_info_by_name(pa_source_info_cb_t cb, const char* name, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op = pa_context_get_source_info_by_name(
+    pa_operation* op = pa_context_get_source_info_by_name(
         pulse_context, name, cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -238,14 +238,14 @@ int_fast32_t pulse_get_source_info_by_name(pa_source_info_cb_t cb, const char *n
     return 0;
 }
 
-int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void *userdata)
+int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op =
+    pa_operation* op =
         pa_context_get_server_info(pulse_context, cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -259,15 +259,15 @@ int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void *userdata)
     return 0;
 }
 
-pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa_channel_map *map)
+pa_stream* pulse_stream_new(const char* name, const pa_sample_spec* ss, const pa_channel_map* map)
 {
     if (pulse_context_ready() < 0)
         return NULL;
 
     pulse_lock();
 
-    pa_proplist *p = pulse_properties();
-    pa_stream *s =
+    pa_proplist* p = pulse_properties();
+    pa_stream* s =
         pa_stream_new_with_proplist(pulse_context, name, ss, map, p);
     pa_proplist_free(p);
 
@@ -275,14 +275,14 @@ pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa
     return s;
 }
 
-int_fast32_t pulse_get_sink_input_info_list(pa_sink_input_info_cb_t cb, void *userdata)
+int_fast32_t pulse_get_sink_input_info_list(pa_sink_input_info_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op = pa_context_get_sink_input_info_list(pulse_context,
+    pa_operation* op = pa_context_get_sink_input_info_list(pulse_context,
                                    cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -297,14 +297,14 @@ int_fast32_t pulse_get_sink_input_info_list(pa_sink_input_info_cb_t cb, void *us
     return 0;
 }
 
-int_fast32_t pulse_get_sink_name_by_index(uint32_t idx, pa_sink_info_cb_t cb, void *userdata)
+int_fast32_t pulse_get_sink_name_by_index(uint32_t idx, pa_sink_info_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op = pa_context_get_sink_info_by_index(pulse_context, idx,
+    pa_operation* op = pa_context_get_sink_info_by_index(pulse_context, idx,
                                  cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -319,14 +319,14 @@ int_fast32_t pulse_get_sink_name_by_index(uint32_t idx, pa_sink_info_cb_t cb, vo
     return 0;
 }
 
-int_fast32_t pulse_load_new_module(const char *name, const char *argument, pa_context_index_cb_t cb, void *userdata)
+int_fast32_t pulse_load_new_module(const char* name, const char* argument, pa_context_index_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op = pa_context_load_module(pulse_context, name, argument,
+    pa_operation* op = pa_context_load_module(pulse_context, name, argument,
                           cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -341,14 +341,14 @@ int_fast32_t pulse_load_new_module(const char *name, const char *argument, pa_co
     return 0;
 }
 
-int_fast32_t pulse_get_sink_list(pa_sink_info_cb_t cb, void *userdata)
+int_fast32_t pulse_get_sink_list(pa_sink_info_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op =
+    pa_operation* op =
         pa_context_get_sink_info_list(pulse_context, cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -363,7 +363,7 @@ int_fast32_t pulse_get_sink_list(pa_sink_info_cb_t cb, void *userdata)
     return 0;
 }
 
-int_fast32_t pulse_move_sink_input(uint32_t sink_input_idx, uint32_t new_sink_idx, pa_context_success_cb_t cb, void *userdata)
+int_fast32_t pulse_move_sink_input(uint32_t sink_input_idx, uint32_t new_sink_idx, pa_context_success_cb_t cb, void* userdata)
 {
     log(">>> pulse_move_sink_input(sink_input_idx: %iu, new_sink_idx: %iu, cb: %p, userdata: %p)", sink_input_idx, new_sink_idx, cb, userdata);
 
@@ -379,7 +379,7 @@ int_fast32_t pulse_move_sink_input(uint32_t sink_input_idx, uint32_t new_sink_id
     pulse_lock();
 
     log(">>> create op");
-    pa_operation *op = pa_context_move_sink_input_by_index(pulse_context, sink_input_idx, new_sink_idx, cb, userdata);
+    pa_operation* op = pa_context_move_sink_input_by_index(pulse_context, sink_input_idx, new_sink_idx, cb, userdata);
     log(">>> created op");
     if (!op)
     {
@@ -404,14 +404,14 @@ int_fast32_t pulse_move_sink_input(uint32_t sink_input_idx, uint32_t new_sink_id
     return 0;
 }
 
-int_fast32_t pulse_unload_module(uint32_t idx, pa_context_success_cb_t cb, void *userdata)
+int_fast32_t pulse_unload_module(uint32_t idx, pa_context_success_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
 
     pulse_lock();
 
-    pa_operation *op =
+    pa_operation* op =
         pa_context_unload_module(pulse_context, idx, cb, userdata);
     if (!op) {
         pulse_unlock();
@@ -426,14 +426,14 @@ int_fast32_t pulse_unload_module(uint32_t idx, pa_context_success_cb_t cb, void 
     return 0;
 }
 
-static void subscribe_cb(pa_context *c, i32 success, void *userdata)
+static void subscribe_cb(pa_context* c, i32 success, void* userdata)
 {
-    bool *result = (bool *)userdata;
+    bool* result = (bool* )userdata;
     *result = success != 0;
     pulse_signal(0);
 }
 
-int_fast32_t pulse_subscribe_sink_input_events(pa_context_subscribe_cb_t cb, void *userdata)
+int_fast32_t pulse_subscribe_sink_input_events(pa_context_subscribe_cb_t cb, void* userdata)
 {
     if (pulse_context_ready() < 0)
         return -1;
@@ -442,7 +442,7 @@ int_fast32_t pulse_subscribe_sink_input_events(pa_context_subscribe_cb_t cb, voi
 
     bool success = true;
 
-    pa_operation *op = pa_context_subscribe(pulse_context,
+    pa_operation* op = pa_context_subscribe(pulse_context,
                         PA_SUBSCRIPTION_MASK_SINK_INPUT,
                         subscribe_cb, &success);
     if (!op) {

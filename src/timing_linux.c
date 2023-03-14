@@ -7,7 +7,7 @@
 static const u32 SECONDS_TO_NANOSECONDS = 1000000000; // 10^9
 
 static const u32 TARGET_FPS = 60;
-static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS) * SECONDS_TO_NANOSECONDS);
+static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS)*  SECONDS_TO_NANOSECONDS);
 
 static u32 currentFrame = 0;
 static u64 currentTimestamp = -1;
@@ -27,7 +27,7 @@ SYM_HOOK(u64, SystemNative_GetTimestamp, (void),
 })
 
 // System Wide
-SYM_HOOK(i32, clock_gettime, (clockid_t clockID, struct timespec *ts),
+SYM_HOOK(i32, clock_gettime, (clockid_t clockID, struct timespec* ts),
 {
     if (!fixedFPS) return orig_clock_gettime(clockID, ts);
     // Use more specific hook if available
@@ -36,7 +36,7 @@ SYM_HOOK(i32, clock_gettime, (clockid_t clockID, struct timespec *ts),
     if (currentTimestamp == -1)
     {
         i32 result = orig_clock_gettime(clockID, ts);
-        currentTimestamp = ts->tv_sec * SECONDS_TO_NANOSECONDS + ts->tv_nsec;
+        currentTimestamp = ts->tv_sec*  SECONDS_TO_NANOSECONDS + ts->tv_nsec;
         return result;
     }
     else
@@ -58,7 +58,7 @@ static u64 get_current_timestamp()
     else
         clock_gettime(CLOCK_MONOTONIC, &ts);
     
-    return ts.tv_sec * SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
+    return ts.tv_sec*  SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
 }
 
 void timing_start()

@@ -6,9 +6,9 @@
 
 #define MAX_MSG_LENGTH 32767
 
-void log_output(log_level_t level, const char *message, ...)
+void log_output(log_level_t level, const char* message, ...)
 {
-    const char *levelStrings[6] = {
+    const char* levelStrings[6] = {
         "(ldcapture/fatal): ", 
         "(ldcapture/error): ", 
         "(ldcapture/warn):  ", 
@@ -16,7 +16,7 @@ void log_output(log_level_t level, const char *message, ...)
         "(ldcapture/debug): ", 
         "(ldcapture/trace): "
     };
-    const char *colorStrings[6] = {"1;41", "1;31", "0;33", "0;32", "0;34", "0;90"};
+    const char* colorStrings[6] = {"1;41", "1;31", "0;33", "0;32", "0;34", "0;90"};
 
     // Technically imposes a 32k character limit on a single log entry, but...
     // DON'T DO THAT!
