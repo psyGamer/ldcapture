@@ -15,7 +15,7 @@ static u64 currentRealTimestamp = -1;
 
 static bool fixedFPS = false;
 
-static bool videoDone = false;
+static bool videoReady = false;
 static bool soundDone = false;
 
 // .NET Core
@@ -68,7 +68,7 @@ void timing_start()
     currentFrame = 0;
     currentTimestamp = -1;
     currentRealTimestamp = -1;
-    videoDone = false;
+    videoReady = false;
     soundDone = false;
 }
 
@@ -86,7 +86,7 @@ void timing_next_frame()
     currentTimestamp += TARGET_TIMESTEP_INC;
     currentRealTimestamp = get_current_timestamp();
 
-    videoDone = false;
+    videoReady = false;
     soundDone = false;
 
     TRACE("Current frame: %i", currentFrame);
@@ -97,24 +97,29 @@ bool timing_is_running()
     return fixedFPS;
 }
 
-void timing_video_done()
+void timing_mark_video_ready()
 {
-    videoDone = true;
+    videoReady = true;
 }
 
-void timing_sound_done()
+void timing_mark_sound_done()
 {
     soundDone = true;
 }
 
-bool timing_is_video_done()
+bool timing_is_video_ready()
 {
-    return videoDone;
+    return videoReady;
 }
 
 bool timing_is_sound_done()
 {
     return soundDone;
+}
+
+bool timing_is_first_frame()
+{
+    return currentFrame == 0;
 }
 
 bool timing_is_realtime_frame_done()

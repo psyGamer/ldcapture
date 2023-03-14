@@ -134,39 +134,59 @@ static void* sound_worker(void* _)
             continue;
         }
 
-        while (timing_is_running() && run_sound_worker && timing_is_sound_done());
+        while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
 
         // Wait a frame to sync again with the video
         if (total_recoded_samples_error >= target_recorded_samples)
         {
             while (timing_is_running() && run_sound_worker && !timing_is_realtime_frame_done());
             total_recoded_samples_error -= target_recorded_samples;
-            timing_sound_done();
+            timing_mark_sound_done();
             continue;
         }
 
         recorded_samples = 0;
 
-        // Setting volume to 0 should reduce sound artifacts
-        if (sound_volume != -1)
-            fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
-        fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-        while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples); // Wait for data
-        fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
-        fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
-        fn_FMOD_ChannelGroup_SetPaused(master_group, true);
-        sound_paused = true;
+        if (sound_paused)
+        {
+            if (sound_volume != -1)
+                fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
+            fn_FMOD_ChannelGroup_SetPaused(master_group, false);
+            sound_paused = false;
+        }
+        
+        // Wait for data
+        while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples);
+
+        // Only pause if the next frame isn't ready
+        if (!timing_is_video_ready())
+        {
+            // Setting volume to 0 should reduce sound artifacts
+            fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
+            fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
+            fn_FMOD_ChannelGroup_SetPaused(master_group, true);
+            sound_paused = true;
+        }
+        else
+        {
+            INFO("Could skip pausing!");
+        }
 
         // Usually we record more than a frame of data
         total_recoded_samples_error += recorded_samples - target_recorded_samples;
 
-        timing_sound_done();
+        timing_mark_sound_done();
+    }
+
+    if (sound_paused)
+    {
+        if (sound_volume != -1)
+            fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
+        fn_FMOD_ChannelGroup_SetPaused(master_group, false);
+        sound_paused = false;
     }
 
     TRACE("Stopped FMOD sound thread");
-
-    fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-
     return NULL;
 }
 

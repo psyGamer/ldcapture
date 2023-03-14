@@ -63,7 +63,7 @@ static void capture_frame(Display* dpy)
 
     encoder_save_frame(encoder);
     
-    timing_video_done();
+    timing_mark_video_ready();
     while (!timing_is_sound_done()); // Wait for sound
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
@@ -76,6 +76,9 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 {
     if (timing_is_running())
     {
+        timing_mark_video_ready();
+        while (timing_is_running() && !timing_is_sound_done());
+
         timing_next_frame();
         capture_frame(dpy);
     }
