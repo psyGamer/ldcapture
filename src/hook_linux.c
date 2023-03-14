@@ -1,4 +1,4 @@
-#include "hook.h"
+#include "base.h"
 
 #ifdef PLATFORM_LINUX
 
@@ -7,6 +7,7 @@
 #include <link.h>
 
 #include "api.h"
+#include "hook.h"
 
 #define MAX_HOOKED_SYMBOLS 1024
 static i32 hooked_symbol_index = 0;
@@ -30,13 +31,13 @@ static bool catch_api_symbol(const char* name, void* *outApiSymbol)
     if (strcmp(name, "ldcapture_StartRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StartRecording");
-       * outApiSymbol = ldcapture_StartRecording;
+        *outApiSymbol = ldcapture_StartRecording;
         return true;
     }
     if (strcmp(name, "ldcapture_StopRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StopRecording");
-       * outApiSymbol = ldcapture_StopRecording;
+        *outApiSymbol = ldcapture_StopRecording;
         return true;
     }
 
@@ -44,14 +45,14 @@ static bool catch_api_symbol(const char* name, void* *outApiSymbol)
     if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)
     {
         TRACE("Invoked API function: INVOKE_ldcapture_StartRecording");
-       * outApiSymbol = NULL;
+        *outApiSymbol = NULL;
         ldcapture_StartRecording();
         return true;
     }
     else if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
     {
         TRACE("Invoked API function: ldcapture_StopRecording");
-       * outApiSymbol = NULL;
+        *outApiSymbol = NULL;
         ldcapture_StopRecording();
         return true;
     }
@@ -106,8 +107,10 @@ void* load_orig_function(const char* origName)
     void* orig = orig_dlsym(RTLD_NEXT, origName);
     if (orig == NULL)
         ERROR("Failed loading original function %s: %s", origName, dlerror());
+#if LOG_TRACE_ENABLED == 1
     else
         TRACE("Successfully loaded original function %s", origName);
+#endif
 
     return orig;
 }
@@ -123,8 +126,10 @@ library_handle_t shared_library_open(const char* libraryName)
 
     if (handle == NULL)
         ERROR("Failed loading library %s: %s", actualLibraryName, dlerror());
+#if LOG_TRACE_ENABLED == 1
     else
         TRACE("Successfully loaded library %s", actualLibraryName);
+#endif
 
     return handle;
 }
@@ -141,6 +146,7 @@ void shared_library_close(library_handle_t handle)
         else
             ERROR("Failed closing library %s(%p): %s", map->l_name, handle, dlerror());
     }
+#if LOG_TRACE_ENABLED == 1
     else
     {
         if (map == NULL || map->l_name == NULL)
@@ -148,6 +154,7 @@ void shared_library_close(library_handle_t handle)
         else
             TRACE("Successfully closed library %s(%p)", map->l_name, handle);
     }
+#endif
 
 }
 
@@ -166,6 +173,7 @@ void* shared_library_get_symbol(library_handle_t handle, const char* symbolName)
         else
             ERROR("Failed loading symbol %s from %s(%p): %s", symbolName, map->l_name, handle, dlerror());
     }
+#if LOG_TRACE_ENABLED == 1
     else
     {
         if (map == NULL || map->l_name == NULL)
@@ -173,6 +181,7 @@ void* shared_library_get_symbol(library_handle_t handle, const char* symbolName)
         else
             TRACE("Successfully loaded symbol %s from %s(%p)", symbolName, map->l_name, handle);
     }
+#endif
 
     return symbol;
 }

@@ -56,7 +56,11 @@
         "encoder_qoi.h": "c",
         "cstdlib": "c",
         "system_error": "c",
-        "base.h": "c"
+        "base.h": "c",
+        "stat.h": "c",
+        "types.h": "c",
+        "encoder_qoi_pcm.h": "c",
+        "filesystem.h": "c"
     },
     
     "editor.tabSize": 4,

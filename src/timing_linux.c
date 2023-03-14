@@ -86,58 +86,30 @@ void timing_next_frame()
     currentTimestamp += TARGET_TIMESTEP_INC;
     currentRealTimestamp = get_current_timestamp();
 
+    // Order is important here, since clearing sound first might cause a race condition,
+    // when first wait for sound clear and than for video ready in another thread.
     videoReady = false;
     soundDone = false;
 
     TRACE("Current frame: %i", currentFrame);
 }
 
-bool timing_is_running()
-{
-    return fixedFPS;
-}
+bool timing_is_first_frame() { return currentFrame == 0; }
+bool timing_is_running() { return fixedFPS; }
 
-void timing_mark_video_ready()
-{
-    INFO("Video ready");
-    videoReady = true;
-}
+void timing_mark_video_ready() { videoReady = true; }
+void timing_mark_sound_done() { soundDone = true; }
 
-void timing_mark_sound_done()
-{
-    INFO("Sound done");
-    soundDone = true;
-}
-
-bool timing_is_video_ready()
-{
-    return videoReady;
-}
-
-bool timing_is_sound_done()
-{
-    return soundDone;
-}
-
-bool timing_is_first_frame()
-{
-    return currentFrame == 0;
-}
+bool timing_is_video_ready() { return videoReady; }
+bool timing_is_sound_done() { return soundDone; }
 
 bool timing_is_realtime_frame_done()
 {
     return currentRealTimestamp == -1 || ((get_current_timestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC);
 }
 
-i32 timing_get_target_fps()
-{
-    return TARGET_FPS;
-}
-
-i32 timing_get_current_frame()
-{
-    return currentFrame;
-}
+i32 timing_get_target_fps() { return TARGET_FPS; }
+i32 timing_get_current_frame() { return currentFrame; }
 
 void init_timing_linux()
 {

@@ -51,7 +51,7 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer
 {
     if (inChannels == *outChannels)
     {
-        memcpy(outBuffer, inBuffer, inChannels * sizeof(f32));
+        memcpy(outBuffer, inBuffer, inChannels * length * sizeof(f32));
     }
     else if (inChannels > *outChannels)
     {
@@ -144,6 +144,8 @@ static pthread_t sound_worker_thread = (pthread_t)NULL;
 static bool sound_paused = false;
 static f32 sound_volume = -1;
 
+// NOTE: This thread might be a bit difficult to understand since it communicates over timing.h with the video capture.
+//       It's probably a good idea to look at a video capture implemenation, for example video_opengl_x11.c, too.
 static void* sound_worker(void* _)
 {
     TRACE("Started FMOD sound thread");
@@ -163,18 +165,33 @@ static void* sound_worker(void* _)
             continue;
         }
 
+        // Wait until the next frame is started first
+        while (timing_is_running() && run_sound_worker && timing_is_sound_done());
         while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
 
+frameStart:
         // Wait a frame to sync again with the video
         if (total_recoded_samples_error >= target_recorded_samples)
         {
-            while (timing_is_running() && run_sound_worker && !timing_is_realtime_frame_done());
+            // If the sound wasn't pause we don't want to get data while skipping
+            if (!sound_paused)
+            {
+                fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
+                fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
+                fn_FMOD_ChannelGroup_SetPaused(master_group, true);
+                sound_paused = true;
+            }
+
             total_recoded_samples_error -= target_recorded_samples;
+            
+            // The next frame might not've started yet
+            while (timing_is_running() && run_sound_worker && timing_is_sound_done());
+            // Since we skip the frame we're already done
             timing_mark_sound_done();
+            while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
+
             continue;
         }
-
-        recorded_samples = 0;
 
         if (sound_paused)
         {
@@ -186,6 +203,9 @@ static void* sound_worker(void* _)
         
         // Wait for data
         while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples);
+        // Usually we record more than one frame of data
+        total_recoded_samples_error += recorded_samples - target_recorded_samples;
+        recorded_samples = 0;
 
         // Only pause if the next frame isn't ready
         if (!timing_is_video_ready())
@@ -198,11 +218,9 @@ static void* sound_worker(void* _)
         }
         else
         {
-            INFO("Could skip pausing!");
+            timing_mark_sound_done();
+            goto frameStart; // Skip syncing with the video since we know it's already ready
         }
-
-        // Usually we record more than a frame of data
-        total_recoded_samples_error += recorded_samples - target_recorded_samples;
 
         timing_mark_sound_done();
     }

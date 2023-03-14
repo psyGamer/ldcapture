@@ -31,7 +31,8 @@ void shutdown_ldcapture()
 
     shutdown_sound_fmod();
 
-    while (!is_shutdown_done_ldcapture());
+    while (!is_shutdown_done_ldcapture())
+    ;
 
     TRACE("Shut down");
 

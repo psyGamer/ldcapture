@@ -19,11 +19,9 @@ void init_encoder()
     }
 
     current_encoder = malloc(structSize);
-    encoder_create(current_encoder, type);
 }
 void shutdown_encoder()
 {
-    encoder_destroy(current_encoder);
     free(current_encoder);
 }
 

@@ -1,10 +1,5 @@
-#define _XOPEN_SOURCE 700
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <pthread.h>
 #include <time.h>
-#include <errno.h>
 
 #define GL_GLEXT_PROTOTYPES
 #define GLX_GLXEXT_PROTOTYPES
@@ -12,6 +7,7 @@
 #include <GL/glx.h>
 #include <GL/glext.h>
 
+#include "base.h"
 #include "hook.h"
 #include "encoder.h"
 #include "timing.h"
@@ -63,9 +59,6 @@ static void capture_frame(Display* dpy)
 
     encoder_flush_video(encoder);
     
-    timing_mark_video_ready();
-    while (!timing_is_sound_done()); // Wait for sound
-
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, oldFramebuffer);
     glReadBuffer(oldReadBuffer);
 
@@ -77,7 +70,7 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
     if (timing_is_running())
     {
         timing_mark_video_ready();
-        while (timing_is_running() && !timing_is_sound_done());
+        while (timing_is_running() && !timing_is_first_frame() && !timing_is_sound_done());
 
         timing_next_frame();
         capture_frame(dpy);

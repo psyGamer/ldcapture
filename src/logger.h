@@ -4,13 +4,14 @@
 
 #define LOG_WARN_ENABLED 1
 #define LOG_INFO_ENABLED 1
-#define LOG_DEBUG_ENABLED 1
-#define LOG_TRACE_ENABLED 1
 
 // Disable debug and trace logging for release builds.
 #if RELEASE == 1
 	#define LOG_DEBUG_ENABLED 0
 	#define LOG_TRACE_ENABLED 0
+#else
+    #define LOG_DEBUG_ENABLED 1
+    #define LOG_TRACE_ENABLED 1
 #endif
 
 typedef enum log_level_t
@@ -43,7 +44,7 @@ void log_output(log_level_t level, const char* message, ...);
 
 #if LOG_INFO_ENABLED == 1
 	// Logs a info-level message.
-	#define INFO(message, ...) log_output(LOG_LEVEL_INFO, message, ##__VA_ARGS__)
+	#define INFO(message, ...) log_output(LOG_LEVEL_INFO, message, ##__VA_ARGS__); fflush(stdout)
 #else
 	// Does nothing when LOG_INFO_ENABLED != 1
 	#define INFO(message, ...)

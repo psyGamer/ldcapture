@@ -48,7 +48,6 @@ void encoder_qoi_pcm_destory(encoder_qoi_pcm_t* encoder)
 
 void encoder_qoi_pcm_prepare_video(encoder_qoi_pcm_t* encoder, u32 width, u32 height)
 {
-    TRACE("Preparing video");
     bool reallocate = (encoder->video_width * encoder->video_height) < (width * height) ||   // Buffer too small
                       (encoder->video_width * encoder->video_height) > (width * height * 2); // Buffer is more than double as big as it should be
     
@@ -57,16 +56,13 @@ void encoder_qoi_pcm_prepare_video(encoder_qoi_pcm_t* encoder, u32 width, u32 he
 
     if (reallocate)
     {
-        TRACE("Video needs reallocation");
         free(encoder->video_data);
         encoder->video_data = realloc(encoder->video_data, width * height * encoder->video_channels);
     }
-    TRACE("Video prepared");
 }
 
 void encoder_qoi_pcm_prepare_sound(encoder_qoi_pcm_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
 {
-    TRACE("Preparing sound");
     size_t srcVarSize = get_sound_format_size(format);
     size_t dstVarSize = get_sound_format_size(encoder->sound_format);
 
@@ -76,17 +72,14 @@ void encoder_qoi_pcm_prepare_sound(encoder_qoi_pcm_t* encoder, u32 channelCount,
 
     if (encoder->sound_data_buffer_size < encoder->sound_data_size)
     {
-        TRACE("Sound needs reallocation");
         free(encoder->sound_data);
         encoder->sound_data_buffer_size = encoder->sound_data_size * 2; // Avoid having to reallocate soon
         encoder->sound_data = realloc(encoder->sound_data, encoder->sound_data_buffer_size);
     }
-    TRACE("Sound prepared");
 }
 
 void encoder_qoi_pcm_flush_video(encoder_qoi_pcm_t* encoder)
 {
-    TRACE("Flushing video");
     size_t stride = encoder->video_channels * encoder->video_width;
     stride += (stride % 4) != 0 ? (4 - stride % 4) : 0; // Align on 4 bytes
 
@@ -101,18 +94,14 @@ void encoder_qoi_pcm_flush_video(encoder_qoi_pcm_t* encoder)
     encoder->video_frame_count++;
 
     qoi_write(filePath, encoder->video_data, &desc);
-    TRACE("Video flushed");
 }
 
 void encoder_qoi_pcm_flush_sound(encoder_qoi_pcm_t* encoder)
 {
-    TRACE("Flushing sound");
     // Transcode the data if nessecery
     // No reallocations need since the buffer should already be large enough
     if (encoder->sound_channels != encoder->sound_data_channels)
     {
-        TRACE("Transcoding channels: %i -> %i", encoder->sound_data_channels, encoder->sound_channels);
-
         u8* origData = malloc(encoder->sound_data_buffer_size);
         memcpy(origData, encoder->sound_data, encoder->sound_data_size);
 
@@ -147,13 +136,10 @@ void encoder_qoi_pcm_flush_sound(encoder_qoi_pcm_t* encoder)
 
         encoder->sound_data_size = encoder->sound_data_samples * encoder->sound_channels * dataVarSize;
         free(origData);
-        TRACE("Transcode channels done");
     }
 
     if (encoder->sound_format != encoder->sound_data_format)
     {
-        TRACE("Transcoding format: %i -> %i", encoder->sound_data_format, encoder->sound_format);
-
         #define IMPL_FORMAT_TRANSCODE(srcType, dstType, act)                                                \
             for (i32 i = 0, j = 0; i < encoder->sound_data_size; i += sizeof(srcType), j += sizeof(dstType)) \
             {                                                                                                \
@@ -185,12 +171,10 @@ void encoder_qoi_pcm_flush_sound(encoder_qoi_pcm_t* encoder)
         }
 
         encoder->sound_data_size = encoder->sound_data_samples * encoder->sound_channels * get_sound_format_size(encoder->sound_format);
-        TRACE("Transcode format done");
     }
 
-    // INFO("fwrite(%p, 1, %zu, %p)", encoder->sound_data, encoder->sound_data_size, encoder->sound_file);
+    encoder->sound_byte_count += encoder->sound_data_size;
     fwrite(encoder->sound_data, 1, encoder->sound_data_size, encoder->sound_file);
-    TRACE("Sound flushed");
 }
 
 
