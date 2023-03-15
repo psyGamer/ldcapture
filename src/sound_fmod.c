@@ -16,9 +16,6 @@ static FMOD_RESULT (*fn_FMOD_System_CreateDSP)(FMOD_SYSTEM* system, const FMOD_D
 static FMOD_RESULT (*fn_FMOD_System_GetMasterChannelGroup)(FMOD_SYSTEM* system, FMOD_CHANNELGROUP** channelgroup)            = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_AddDSP)(FMOD_CHANNELGROUP* channelgroup, i32 index, FMOD_DSP* dsp)                 = NULL;
 static FMOD_RESULT (*fn_FMOD_ChannelGroup_RemoveDSP)(FMOD_CHANNELGROUP* channelgroup, FMOD_DSP* dsp)                         = NULL;
-static FMOD_RESULT (*fn_FMOD_ChannelGroup_SetPaused)(FMOD_CHANNELGROUP* channelgroup, FMOD_BOOL paused)                      = NULL;
-static FMOD_RESULT (*fn_FMOD_ChannelGroup_GetVolume)(FMOD_CHANNELGROUP* channelgroup, f32* volume)                           = NULL;
-static FMOD_RESULT (*fn_FMOD_ChannelGroup_SetVolume)(FMOD_CHANNELGROUP* channelgroup, f32 volume)                            = NULL;
 static FMOD_RESULT (*fn_FMOD_DSP_Release)(FMOD_DSP* dsp)                                                                     = NULL;
 
 static void load_symbols()
@@ -32,9 +29,6 @@ static void load_symbols()
     fn_FMOD_System_GetMasterChannelGroup = shared_library_get_symbol(libfmod, "FMOD_System_GetMasterChannelGroup");
     fn_FMOD_ChannelGroup_AddDSP          = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_AddDSP");
     fn_FMOD_ChannelGroup_RemoveDSP       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_RemoveDSP");
-    fn_FMOD_ChannelGroup_SetPaused       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_SetPaused");
-    fn_FMOD_ChannelGroup_GetVolume       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_GetVolume");
-    fn_FMOD_ChannelGroup_SetVolume       = shared_library_get_symbol(libfmod, "FMOD_ChannelGroup_SetVolume");
     fn_FMOD_DSP_Release                  = shared_library_get_symbol(libfmod, "FMOD_DSP_Release");
 
     shared_library_close(libfmod);
@@ -46,6 +40,8 @@ static FMOD_CHANNELGROUP* master_group;
 static i32 total_recoded_samples_error = 0;
 static i32 target_recorded_samples = 48000 / 60;
 static i32 recorded_samples = 0;
+
+static bool allow_sound_capture = false;
 
 FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer, f32* outBuffer, u32 length, i32 inChannels, i32* outChannels) 
 {
@@ -84,6 +80,8 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer
     }
 
     if (!timing_is_running()) return FMOD_OK;
+    while(timing_is_running() && !allow_sound_capture);
+    if (!timing_is_running()) return FMOD_OK;
 
     encoder_t* encoder = encoder_get_current();
     encoder_prepare_sound(encoder, inChannels, length, ENCODER_SOUND_FORMAT_PCM_F32);
@@ -107,7 +105,6 @@ FMOD_RESULT hook_FMOD_System_init(FMOD_SYSTEM* system, i32 maxchannels, FMOD_INI
         fn_FMOD_System_GetMasterChannelGroup == NULL ||
         fn_FMOD_ChannelGroup_AddDSP == NULL ||
         fn_FMOD_ChannelGroup_RemoveDSP == NULL ||
-        fn_FMOD_ChannelGroup_SetPaused == NULL ||
         fn_FMOD_DSP_Release == NULL) load_symbols();
 
     FMOD_DSP_DESCRIPTION desc = { 0 };
@@ -152,36 +149,15 @@ static void* sound_worker(void* _)
 
     while (run_sound_worker)
     {
-        // We spin while waiting since we need to respond quickly
-        if (!timing_is_running())
-        {
-            if (sound_paused)
-            {
-                if (sound_volume != -1)
-                    fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
-                fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-                sound_paused = false;
-            }
-            continue;
-        }
+        if (!timing_is_running()) continue;
 
         // Wait until the next frame is started first
         while (timing_is_running() && run_sound_worker && timing_is_sound_done());
         while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
 
-frameStart:
         // Wait a frame to sync again with the video
         if (total_recoded_samples_error >= target_recorded_samples)
         {
-            // If the sound wasn't pause we don't want to get data while skipping
-            if (!sound_paused)
-            {
-                fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
-                fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
-                fn_FMOD_ChannelGroup_SetPaused(master_group, true);
-                sound_paused = true;
-            }
-
             total_recoded_samples_error -= target_recorded_samples;
             
             // The next frame might not've started yet
@@ -192,45 +168,16 @@ frameStart:
 
             continue;
         }
-
-        if (sound_paused)
-        {
-            if (sound_volume != -1)
-                fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
-            fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-            sound_paused = false;
-        }
         
         // Wait for data
+        allow_sound_capture = true;
         while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples);
+        allow_sound_capture = false;
         // Usually we record more than one frame of data
         total_recoded_samples_error += recorded_samples - target_recorded_samples;
         recorded_samples = 0;
 
-        // Only pause if the next frame isn't ready
-        if (!timing_is_video_ready())
-        {
-            // Setting volume to 0 should reduce sound artifacts
-            fn_FMOD_ChannelGroup_GetVolume(master_group, &sound_volume);
-            fn_FMOD_ChannelGroup_SetVolume(master_group, 0.0f);
-            fn_FMOD_ChannelGroup_SetPaused(master_group, true);
-            sound_paused = true;
-        }
-        else
-        {
-            timing_mark_sound_done();
-            goto frameStart; // Skip syncing with the video since we know it's already ready
-        }
-
         timing_mark_sound_done();
-    }
-
-    if (sound_paused)
-    {
-        if (sound_volume != -1)
-            fn_FMOD_ChannelGroup_SetVolume(master_group, sound_volume);
-        fn_FMOD_ChannelGroup_SetPaused(master_group, false);
-        sound_paused = false;
     }
 
     TRACE("Stopped FMOD sound thread");
@@ -247,7 +194,6 @@ void init_sound_fmod()
     hook_symbol(NULL, (void**)&fn_FMOD_System_GetMasterChannelGroup, "FMOD_System_GetMasterChannelGroup");
     hook_symbol(NULL, (void**)&fn_FMOD_ChannelGroup_AddDSP, "FMOD_ChannelGroup_AddDSP");
     hook_symbol(NULL, (void**)&fn_FMOD_ChannelGroup_RemoveDSP, "FMOD_ChannelGroup_RemoveDSP");
-    hook_symbol(NULL, (void**)&fn_FMOD_ChannelGroup_SetPaused, "FMOD_ChannelGroup_SetPaused");
     hook_symbol(NULL, (void**)&fn_FMOD_DSP_Release, "FMOD_DSP_Release");
 
     run_sound_worker = true;
