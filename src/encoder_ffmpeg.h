@@ -5,17 +5,21 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswresample/swresample.h>
 
 typedef struct output_stream_t
 {
     AVStream* stream;
     AVCodecContext* codec_ctx;
 
-    i32 samples_count;
+    AVFrame* in_frame; // For writing data into it
+    AVFrame* out_frame; // For writing to a file
 
-    AVFrame* frame;
     AVPacket* packet;
 
+    struct SwrContext* swr_ctx;
+
+    i32 samples_count;
     size_t frame_sample_pos;
 } output_stream_t;
 
@@ -44,24 +48,10 @@ typedef struct encoder_ffmpeg_t
     size_t sound_data_buffer_size;
 
     AVFormatContext* format_ctx;
-    AVOutputFormat* output_format;
-    // AVStream* audio_stream;
-
     bool has_video;
     bool has_audio;
-    const AVCodec* video_codec;
-    const AVCodec* audio_codec;
     output_stream_t video_stream;
     output_stream_t audio_stream;
-
-    // AVCodecContext* codec_ctx;
-    // const AVCodec* codec;
-    // AVFrame* frame;
-    // AVPacket* packet;
-
-    // u8* frame_buffer;
-    // size_t frame_buffer_size;
-    // size_t frame_buffer_pos;
 } encoder_ffmpeg_t;
 
 void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder);
