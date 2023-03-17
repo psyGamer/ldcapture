@@ -40,7 +40,7 @@ void encoder_qoi_pcm_create(encoder_qoi_pcm_t* encoder)
     fclose(f);
 }
 
-void encoder_qoi_pcm_destory(encoder_qoi_pcm_t* encoder)
+void encoder_qoi_pcm_destroy(encoder_qoi_pcm_t* encoder)
 {
     fflush(encoder->sound_file);
     fclose(encoder->sound_file);

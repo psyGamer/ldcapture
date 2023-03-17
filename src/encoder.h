@@ -4,6 +4,7 @@
 typedef enum encoder_type_t
 {
     ENCODER_TYPE_QOI_PCM,
+    ENCODER_TYPE_FFMPEG,
 } encoder_type_t;
 
 typedef enum encoder_sound_format_t

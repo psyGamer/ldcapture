@@ -60,10 +60,23 @@
         "stat.h": "c",
         "types.h": "c",
         "encoder_qoi_pcm.h": "c",
-        "filesystem.h": "c"
+        "filesystem.h": "c",
+        "random": "c",
+        "compare": "c",
+        "ratio": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "variant": "c",
+        "algorithm": "c",
+        "avformat.h": "c",
+        "samplefmt.h": "c",
+        "avcodec.h": "c",
+        "common.h": "c"
     },
     
     "editor.tabSize": 4,
-    "editor.insertSpaces": true
+    "editor.insertSpaces": true,
 
+    "C_Cpp.formatting": "vcFormat",
+    "C_Cpp.vcFormat.space.pointerReferenceAlignment": "left"
 }

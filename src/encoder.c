@@ -2,19 +2,24 @@
 
 #include "encoder.h"
 #include "encoder_qoi_pcm.h"
+#include "encoder_ffmpeg.h"
 #include "filesystem.h"
 
 static encoder_t* current_encoder = NULL;
+static encoder_type_t current_encoder_type;
 
 void init_encoder()
 {
-    encoder_type_t type = ENCODER_TYPE_QOI_PCM;
+    encoder_type_t type = ENCODER_TYPE_FFMPEG;
 
     size_t structSize;
     switch (type)
     {
     case ENCODER_TYPE_QOI_PCM:
         structSize = sizeof(encoder_qoi_pcm_t);
+        break;
+    case ENCODER_TYPE_FFMPEG:
+        structSize = sizeof(encoder_ffmpeg_t);
         break;
     }
 
@@ -59,6 +64,9 @@ void encoder_create(encoder_t* encoder, encoder_type_t type)
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_create((encoder_qoi_pcm_t*)encoder);
         break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_create((encoder_ffmpeg_t*)encoder);
+        break;
     }
 }
 
@@ -67,7 +75,10 @@ void encoder_destroy(encoder_t* encoder)
     switch (encoder->type)
     {
     case ENCODER_TYPE_QOI_PCM:
-        encoder_qoi_pcm_destory((encoder_qoi_pcm_t*)encoder);
+        encoder_qoi_pcm_destroy((encoder_qoi_pcm_t*)encoder);
+        break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_destroy((encoder_ffmpeg_t*)encoder);
         break;
     }
 
@@ -81,6 +92,9 @@ void encoder_prepare_video(encoder_t* encoder, u32 width, u32 height)
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_prepare_video((encoder_qoi_pcm_t*)encoder, width, height);
         break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_prepare_video((encoder_ffmpeg_t*)encoder, width, height);
+        break;
     }
 }
 
@@ -90,6 +104,9 @@ void encoder_prepare_sound(encoder_t* encoder, u32 channelCount, size_t sampleCo
     {
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_prepare_sound((encoder_qoi_pcm_t*)encoder, channelCount, sampleCount, format);
+        break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_prepare_sound((encoder_ffmpeg_t*)encoder, channelCount, sampleCount, format);
         break;
     }
 }
@@ -101,6 +118,9 @@ void encoder_flush_video(encoder_t* encoder)
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_flush_video((encoder_qoi_pcm_t*)encoder);
         break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_flush_video((encoder_ffmpeg_t*)encoder);
+        break;
     }
 }
 void encoder_flush_sound(encoder_t* encoder)
@@ -109,6 +129,9 @@ void encoder_flush_sound(encoder_t* encoder)
     {
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_flush_sound((encoder_qoi_pcm_t*)encoder);
+        break;
+    case ENCODER_TYPE_FFMPEG:
+        encoder_ffmpeg_flush_sound((encoder_ffmpeg_t*)encoder);
         break;
     }
 }

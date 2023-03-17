@@ -30,7 +30,7 @@ typedef struct encoder_qoi_pcm_t
 } encoder_qoi_pcm_t;
 
 void encoder_qoi_pcm_create(encoder_qoi_pcm_t* encoder);
-void encoder_qoi_pcm_destory(encoder_qoi_pcm_t* encoder);
+void encoder_qoi_pcm_destroy(encoder_qoi_pcm_t* encoder);
 
 void encoder_qoi_pcm_prepare_video(encoder_qoi_pcm_t* encoder, u32 width, u32 height);
 void encoder_qoi_pcm_prepare_sound(encoder_qoi_pcm_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format);
