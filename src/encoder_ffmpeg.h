@@ -5,6 +5,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 
 typedef struct output_stream_t
@@ -17,8 +18,10 @@ typedef struct output_stream_t
 
     AVPacket* packet;
 
+    struct SwsContext* sws_ctx;
     struct SwrContext* swr_ctx;
 
+    i32 frame_count;
     i32 samples_count;
     size_t frame_sample_pos;
 } output_stream_t;
