@@ -76,13 +76,12 @@ void encoder_destroy(encoder_t* encoder)
     {
     case ENCODER_TYPE_QOI_PCM:
         encoder_qoi_pcm_destroy((encoder_qoi_pcm_t*)encoder);
+        free(encoder->video_data);
         break;
     case ENCODER_TYPE_FFMPEG:
         encoder_ffmpeg_destroy((encoder_ffmpeg_t*)encoder);
         break;
     }
-
-    free(encoder->video_data);
 }
 
 void encoder_prepare_video(encoder_t* encoder, u32 width, u32 height)

@@ -24,9 +24,6 @@ static void capture_frame(Display* dpy)
     XWindowAttributes attr = {0};
     XGetWindowAttributes(dpy, window, &attr);
 
-    encoder_t* encoder = encoder_get_current();
-    encoder_prepare_video(encoder, attr.width, attr.height);
-
     pthread_mutex_lock(&mutex);
 
     if (glXGetSwapIntervalMESA() > 0)
@@ -41,21 +38,28 @@ static void capture_frame(Display* dpy)
     glGetIntegerv(GL_READ_BUFFER,(GLint*) &oldReadBuffer);
     glReadBuffer(GL_FRONT);
 
-    glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, encoder->video_data);
+    u8* srcData =  malloc(attr.width * attr.height * 4);
+    glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, srcData);
     
-    // Flip the image (https://codereview.stackexchange.com/q/29618)
-    const size_t rowStride = attr.width*  4;
-    unsigned char* tempRow = malloc(rowStride);
-    unsigned char* low  = encoder->video_data;
-    unsigned char* high = encoder->video_data + (attr.height - 1)*  rowStride;
+    encoder_t* encoder = encoder_get_current();
+    encoder_prepare_video(encoder, attr.width, attr.height);
 
-    for (; low < high; low += rowStride, high -= rowStride) {
-        memcpy(tempRow, low, rowStride);
-        memcpy(low, high, rowStride);
-        memcpy(high, tempRow, rowStride);
+    // Flip the image and add padding
+    const size_t srcRowStride = attr.width * 4;
+    const size_t dstRowStride = encoder->video_row_stride;
+
+    u8* src = srcData;
+    u8* dst = encoder->video_data + (attr.height - 1) * dstRowStride;
+
+    memset(encoder->video_data, 0, dstRowStride);
+    for (i32 i = 0; i < attr.height; i++)
+    {
+        memcpy(dst, src, srcRowStride);
+        src += srcRowStride;
+        dst -= dstRowStride;
     }
 
-    free(tempRow);
+    free(srcData);
 
     encoder_flush_video(encoder);
     
@@ -65,8 +69,14 @@ static void capture_frame(Display* dpy)
     pthread_mutex_unlock(&mutex);
 }
 
+#include "api.h"
+int a = 0;
+
 SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 {
+    // if (a == 0)
+    //     ldcapture_StartRecording();
+
     if (timing_is_running())
     {
         timing_mark_video_ready();
@@ -74,7 +84,13 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 
         timing_next_frame();
         capture_frame(dpy);
+        a++;
     }
+
+    // if (a >= 60) {
+    //     ldcapture_StopRecording();
+    //     a = -1;
+    // }
 
     orig_glXSwapBuffers(dpy, drawable);
 })

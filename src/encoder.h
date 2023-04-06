@@ -22,6 +22,7 @@ typedef struct encoder_t
     u32 video_height;
     u8* video_data;
     u32 video_frame_count;
+    u32 video_row_stride;
 
     u32 sound_channels;
     u32 sound_freqency;

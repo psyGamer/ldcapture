@@ -28,7 +28,7 @@ static void add_stream(output_stream_t* outStream, AVFormatContext* formatCtx, c
     {
     case AVMEDIA_TYPE_VIDEO:
         ctx->codec_id = codecId;
-        ctx->bit_rate = 400000;
+        ctx->bit_rate = 1000000;
         ctx->width = 1920;
         ctx->height = 1080;
 
@@ -223,23 +223,43 @@ void encoder_ffmpeg_destroy(encoder_ffmpeg_t* encoder)
 
 void encoder_ffmpeg_prepare_video(encoder_ffmpeg_t* encoder, u32 width, u32 height)
 {
-    bool reallocate = (encoder->video_width * encoder->video_height) < (width * height) ||   // Buffer too small
-                      (encoder->video_width * encoder->video_height) > (width * height * 2); // Buffer is more than double as big as it should be
-    
-    encoder->video_width = width;
-    encoder->video_height = height;
+    output_stream_t* outStream = &encoder->video_stream;
+    AVCodecContext* ctx = outStream->codec_ctx;
 
-    if (reallocate)
+    if (outStream->in_frame->width != width ||
+        outStream->in_frame->height != height)
     {
-        INFO("Allocing: %i", width * height * encoder->video_channels);
-        encoder->video_data = realloc(encoder->video_data, width * height * encoder->video_channels);
+        av_frame_free(&outStream->in_frame);
+        outStream->in_frame = alloc_video_frame(AV_PIX_FMT_RGBA, width, height);
 
-        if (encoder->video_data == NULL)
-        {
-            FATAL("Failed to allocate video buffer!");
-            exit(1);
-        }
+        sws_freeContext(outStream->sws_ctx);
+        outStream->sws_ctx = sws_getContext(
+            width, height, AV_PIX_FMT_RGBA,
+            ctx->width, ctx->height, ctx->pix_fmt,
+            SWS_BICUBIC, NULL, NULL, NULL);
+
+        encoder->video_row_stride = outStream->in_frame->linesize[0];
     }
+
+    encoder->video_data = outStream->in_frame->data[0];
+
+//     bool reallocate = (encoder->video_width * encoder->video_height) < (width * height) ||   // Buffer too small
+//                       (encoder->video_width * encoder->video_height) > (width * height * 2); // Buffer is more than double as big as it should be
+    
+//     encoder->video_width = width;
+//     encoder->video_height = height;
+
+//     if (reallocate)
+//     {
+//         INFO("Allocing: %i", width * height * encoder->video_channels);
+//         encoder->video_data = realloc(encoder->video_data, width * height * encoder->video_channels);
+
+//         if (encoder->video_data == NULL)
+//         {
+//             FATAL("Failed to allocate video buffer!");
+//             exit(1);
+//         }
+//     }
 }
 
 void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
@@ -256,8 +276,8 @@ void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, s
 
     if (encoder->sound_data_buffer_size < encoder->sound_data_size)
     {
-        INFO("Allocing: %i", encoder->sound_data_buffer_size);
         encoder->sound_data_buffer_size = encoder->sound_data_size * 2; // Avoid having to reallocate soon
+        INFO("Allocing: %i", encoder->sound_data_buffer_size);
         encoder->sound_data = realloc(encoder->sound_data, encoder->sound_data_buffer_size);
 
         if (encoder->sound_data == NULL)
@@ -309,36 +329,37 @@ void encoder_ffmpeg_flush_video(encoder_ffmpeg_t* encoder)
     //     }
     // }
 
-    for (i32 y = 0; y < ctx->height; y++)
-    {
-        for (i32 x = 0; x < ctx->width; x++)
-        {
-            i32 dstIdx = (y * ctx->width + x) * 4;
+    // for (i32 y = 0; y < ctx->height; y++)
+    // {
+    //     for (i32 x = 0; x < ctx->width; x++)
+    //     {
+    //         i32 dstIdx = (y * ctx->width + x) * 4;
 
-            if (x >= encoder->video_width || y >= encoder->video_height)
-            {
-                outStream->in_frame->data[0][dstIdx + 0] = 0;
-                outStream->in_frame->data[0][dstIdx + 1] = 0;
-                outStream->in_frame->data[0][dstIdx + 2] = 0;
-                outStream->in_frame->data[0][dstIdx + 3] = 255;
-            }
-            else
-            {
-                i32 srcIdx = (y * encoder->video_width + x) * 4;
+    //         if (x >= encoder->video_width || y >= encoder->video_height)
+    //         {
+    //             outStream->in_frame->data[0][dstIdx + 0] = 0;
+    //             outStream->in_frame->data[0][dstIdx + 1] = 0;
+    //             outStream->in_frame->data[0][dstIdx + 2] = 0;
+    //             outStream->in_frame->data[0][dstIdx + 3] = 255;
+    //         }
+    //         else
+    //         {
+    //             i32 srcIdx = (y * encoder->video_width + x) * 4;
 
-                outStream->in_frame->data[0][dstIdx + 0] = encoder->video_data[srcIdx + 0];
-                outStream->in_frame->data[0][dstIdx + 1] = encoder->video_data[srcIdx + 1];
-                outStream->in_frame->data[0][dstIdx + 2] = encoder->video_data[srcIdx + 2];
-                outStream->in_frame->data[0][dstIdx + 3] = encoder->video_data[srcIdx + 3];
-            }
-        }
+    //             outStream->in_frame->data[0][dstIdx + 0] = encoder->video_data[srcIdx + 0];
+    //             outStream->in_frame->data[0][dstIdx + 1] = encoder->video_data[srcIdx + 1];
+    //             outStream->in_frame->data[0][dstIdx + 2] = encoder->video_data[srcIdx + 2];
+    //             outStream->in_frame->data[0][dstIdx + 3] = encoder->video_data[srcIdx + 3];
+    //         }
+    //     }
         
-    }
+    // }
     // memset(outStream->in_frame->data[0], 255, ctx->width * ctx->height * 4);
 
     AVCHECK(av_frame_make_writable(outStream->in_frame), "Failed making frame writable")
-    sws_scale(outStream->sws_ctx, (const u8* const*)outStream->in_frame->data,  outStream->in_frame->linesize, 0, ctx->height,
-                                                    outStream->out_frame->data, outStream->out_frame->linesize);
+    AVCHECK(sws_scale(outStream->sws_ctx, (const u8* const*)outStream->in_frame->data,  outStream->in_frame->linesize, 0, outStream->in_frame->height,
+                                                    outStream->out_frame->data, outStream->out_frame->linesize),
+            "Failed resampling video");
     // fill_yuv_image(outStream->out_frame, outStream->frame_count, ctx->width, ctx->height);
 
     outStream->out_frame->pts = outStream->frame_count++;
