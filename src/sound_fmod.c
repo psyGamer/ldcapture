@@ -85,11 +85,8 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer
 
     encoder_t* encoder = encoder_get_current();
     encoder_prepare_sound(encoder, inChannels, length, ENCODER_SOUND_FORMAT_PCM_F32);
-    INFO("copying; %i", inChannels * length * sizeof(f32));
     memcpy(encoder->sound_data, inBuffer, inChannels * length * sizeof(f32));
-    INFO("ok");
     encoder_flush_sound(encoder);
-    INFO("ok2");
 
     recorded_samples += length;
 

@@ -36,10 +36,11 @@ void encoder_create(encoder_t* encoder, encoder_type_t type)
 {
     encoder->type = type;
     encoder->video_channels = 4; // Currently hardcoded
-    encoder->video_width = 0;
-    encoder->video_height = 0;
+    encoder->video_width = 1920;
+    encoder->video_height = 1080;
     encoder->video_data = NULL;
     encoder->video_frame_count = 0;
+    encoder->video_row_stride = 0;
     encoder->sound_channels = 2;
     encoder->sound_freqency = 48000;
     encoder->sound_format = ENCODER_SOUND_FORMAT_PCM_F32;

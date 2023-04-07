@@ -71,7 +71,10 @@
         "avformat.h": "c",
         "samplefmt.h": "c",
         "avcodec.h": "c",
-        "common.h": "c"
+        "common.h": "c",
+        "imgutils.h": "c",
+        "swscale.h": "c",
+        "hwcontext.h": "c"
     },
     
     "editor.tabSize": 4,

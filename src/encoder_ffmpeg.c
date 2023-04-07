@@ -13,13 +13,13 @@
         }                                     \
     }
 
-static void add_stream(output_stream_t* outStream, AVFormatContext* formatCtx, const AVCodec** codec, enum AVCodecID codecId)
+static void add_stream(encoder_ffmpeg_t* encoder, output_stream_t* outStream, const AVCodec** codec, enum AVCodecID codecId)
 {
     *codec = avcodec_find_encoder(codecId);
 
     outStream->packet = av_packet_alloc();
-    outStream->stream = avformat_new_stream(formatCtx, NULL);
-    outStream->stream->id = formatCtx->nb_streams - 1;
+    outStream->stream = avformat_new_stream(encoder->format_ctx, NULL);
+    outStream->stream->id = encoder->format_ctx->nb_streams - 1;
     outStream->codec_ctx = avcodec_alloc_context3(*codec);
 
     AVCodecContext* ctx = outStream->codec_ctx;
@@ -29,8 +29,8 @@ static void add_stream(output_stream_t* outStream, AVFormatContext* formatCtx, c
     case AVMEDIA_TYPE_VIDEO:
         ctx->codec_id = codecId;
         ctx->bit_rate = 1000000;
-        ctx->width = 1920;
-        ctx->height = 1080;
+        ctx->width = encoder->video_width;
+        ctx->height = encoder->video_height;
 
         outStream->stream->time_base = (AVRational){ .num = 1, .den = 60 };
         ctx->time_base = outStream->stream->time_base;
@@ -39,7 +39,6 @@ static void add_stream(output_stream_t* outStream, AVFormatContext* formatCtx, c
         break;
     case AVMEDIA_TYPE_AUDIO:
         ctx->sample_fmt = (*codec)->sample_fmts ? (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-        // ctx->sample_fmt = AV_SAMPLE_FMT_S16;
         ctx->bit_rate = 64000;
         ctx->sample_rate = 44100;
 
@@ -55,13 +54,13 @@ static void add_stream(output_stream_t* outStream, AVFormatContext* formatCtx, c
 
         ctx->sample_rate = 48000;
 
-        AVCHECK(av_channel_layout_copy(&ctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO), "Failed copying channel layout")
-            outStream->stream->time_base = (AVRational){ .num = 1, .den = ctx->sample_rate };
+        AVCHECK(av_channel_layout_copy(&ctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO), "Failed copying channel layout");
+        outStream->stream->time_base = (AVRational){ .num = 1, .den = ctx->sample_rate };
     default:
         break;
     }
 
-    if (formatCtx->oformat->flags & AVFMT_GLOBALHEADER)
+    if (encoder->format_ctx->oformat->flags & AVFMT_GLOBALHEADER)
         ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 }
 
@@ -98,14 +97,21 @@ static AVFrame* alloc_audio_frame(enum AVSampleFormat sampleFmt, AVChannelLayout
     return frame;
 }
 
-static void open_video(output_stream_t* outStream, AVFormatContext* formatCtx, const AVCodec* codec)
+static void open_video(encoder_ffmpeg_t* encoder, const AVCodec* codec)
 {
+    output_stream_t* outStream = &encoder->video_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    AVCHECK(avcodec_open2(ctx, codec, NULL), "Could not open video codec");
+    AVDictionary* options = { 0 };
+    av_dict_set(&options, "crf", "27", 0);
+    av_dict_set(&options, "preset", "medium", 0);
+    av_dict_set(&options, "tune", "zerolatency", 0);
+
+    AVCHECK(avcodec_open2(ctx, codec, &options), "Could not open video codec");
     outStream->in_frame = alloc_video_frame(AV_PIX_FMT_RGBA, ctx->width, ctx->height);
     outStream->out_frame = alloc_video_frame(ctx->pix_fmt, ctx->width, ctx->height);
     outStream->frame_sample_pos = 0;
+    encoder->video_row_stride = outStream->in_frame->linesize[0];
 
     outStream->sws_ctx = sws_getContext(ctx->width, ctx->height, AV_PIX_FMT_RGBA,
                                         ctx->width, ctx->height, ctx->pix_fmt,
@@ -114,8 +120,9 @@ static void open_video(output_stream_t* outStream, AVFormatContext* formatCtx, c
     AVCHECK(avcodec_parameters_from_context(outStream->stream->codecpar, ctx), "Failed copying parameters from context")
 }
 
-static void open_audio(output_stream_t* outStream, AVFormatContext* formatCtx, const AVCodec* codec)
+static void open_audio(encoder_ffmpeg_t* encoder, const AVCodec* codec)
 {
+    output_stream_t* outStream = &encoder->audio_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
     AVCHECK(avcodec_open2(ctx, codec, NULL), "Could not open audio codec");
@@ -144,7 +151,6 @@ static void open_audio(output_stream_t* outStream, AVFormatContext* formatCtx, c
 
 static void write_frame(output_stream_t* outStream, AVFormatContext* formatCtx, AVFrame* frame)
 {
-    // Send the frame for encoding
     AVCHECK(avcodec_send_frame(outStream->codec_ctx, frame), "Error sending the frame to the encoder")
 
     // Read all the available output packets (in general there may be any number of them)
@@ -168,31 +174,42 @@ static void write_frame(output_stream_t* outStream, AVFormatContext* formatCtx, 
 
 void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder)
 {
+    encoder->sound_data_channels = 0;
+    encoder->sound_data_samples = 0;
+    encoder->sound_data_format = 0;
+    encoder->sound_data_size = 0;
+    encoder->sound_data_buffer_size = 0;
+    encoder->format_ctx = 0;
+    encoder->has_video = false;
+    encoder->has_audio = false;
+    encoder->video_stream = (output_stream_t){0};
+    encoder->audio_stream = (output_stream_t){0};
+
     const char* outputFile = "ffmpeg-encode.mkv";
 
     AVCHECK(avformat_alloc_output_context2(&encoder->format_ctx, NULL, NULL, outputFile), "Failed allocating format context");
     INFO("VIDEO CODEC: %s", avcodec_get_name(encoder->format_ctx->oformat->video_codec));
     INFO("AUDIO CODEC: %s", avcodec_get_name(encoder->format_ctx->oformat->audio_codec));
 
-    const AVCodec* video_codec;
-    const AVCodec* audio_codec;
-    encoder->has_video = false;
-    encoder->has_audio = false;
-    if (encoder->format_ctx->oformat->video_codec != AV_CODEC_ID_NONE)
+    enum AVCodecID video_codec_id = encoder->format_ctx->oformat->video_codec;
+    enum AVCodecID audio_codec_id = encoder->format_ctx->oformat->audio_codec;
+    const AVCodec* video_codec = NULL;
+    const AVCodec* audio_codec = NULL;
+    if (video_codec_id != AV_CODEC_ID_NONE)
     {
-        add_stream(&encoder->video_stream, encoder->format_ctx, &video_codec, encoder->format_ctx->oformat->video_codec);
+        add_stream(encoder, &encoder->video_stream, &video_codec, video_codec_id);
         encoder->has_video = true;
     }
-    if (encoder->format_ctx->oformat->audio_codec != AV_CODEC_ID_NONE)
+    if (audio_codec_id != AV_CODEC_ID_NONE)
     {
-        add_stream(&encoder->audio_stream, encoder->format_ctx, &audio_codec, encoder->format_ctx->oformat->audio_codec);
+        add_stream(encoder, &encoder->audio_stream, &audio_codec, audio_codec_id);
         encoder->has_audio = true;
     }
 
     if (encoder->has_video)
-        open_video(&encoder->video_stream, encoder->format_ctx, video_codec);
+        open_video(encoder, video_codec);
     if (encoder->has_audio)
-        open_audio(&encoder->audio_stream, encoder->format_ctx, audio_codec);
+        open_audio(encoder, audio_codec);
 
     if (!(encoder->format_ctx->oformat->flags & AVFMT_NOFILE))
         AVCHECK(avio_open(&encoder->format_ctx->pb, outputFile, AVIO_FLAG_WRITE), "Failed opening output file")
@@ -242,30 +259,10 @@ void encoder_ffmpeg_prepare_video(encoder_ffmpeg_t* encoder, u32 width, u32 heig
     }
 
     encoder->video_data = outStream->in_frame->data[0];
-
-//     bool reallocate = (encoder->video_width * encoder->video_height) < (width * height) ||   // Buffer too small
-//                       (encoder->video_width * encoder->video_height) > (width * height * 2); // Buffer is more than double as big as it should be
-    
-//     encoder->video_width = width;
-//     encoder->video_height = height;
-
-//     if (reallocate)
-//     {
-//         INFO("Allocing: %i", width * height * encoder->video_channels);
-//         encoder->video_data = realloc(encoder->video_data, width * height * encoder->video_channels);
-
-//         if (encoder->video_data == NULL)
-//         {
-//             FATAL("Failed to allocate video buffer!");
-//             exit(1);
-//         }
-//     }
 }
 
 void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
 {
-    // INFO("encoder_ffmpeg_prepare_sound(%i, %i, %i)", channelCount, sampleCount, format);
-
     size_t srcVarSize = get_sound_format_size(format);
     size_t dstVarSize = get_sound_format_size(encoder->sound_format);
 
@@ -287,86 +284,19 @@ void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, s
         }
     }
 }
- 
-/* Prepare a dummy image. */
-static void fill_yuv_image(AVFrame *pict, int frame_index,
-                           int width, int height)
-{
-    int x, y, i;
- 
-    i = frame_index;
- 
-    /* Y */
-    for (y = 0; y < height; y++)
-        for (x = 0; x < width; x++)
-            pict->data[0][y * pict->linesize[0] + x] = x + y + i * 3;
- 
-    /* Cb and Cr */
-    for (y = 0; y < height / 2; y++) {
-        for (x = 0; x < width / 2; x++) {
-            pict->data[1][y * pict->linesize[1] + x] = 128 + y + i * 2;
-            pict->data[2][y * pict->linesize[2] + x] = 64 + x + i * 5;
-        }
-    }
-}
-
-#include "api.h"
 
 void encoder_ffmpeg_flush_video(encoder_ffmpeg_t* encoder)
 {
     output_stream_t* outStream = &encoder->video_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    // memcpy(outStream->in_frame->data[0], encoder->video_data, ctx->width * ctx->height * 4);
-    // for (i32 x = 0; x < ctx->width; x++)
-    // {
-    //     for (i32 y = 0; y < ctx->height; y++)
-    //     {
-    //         outStream->in_frame->data[0][y * outStream->in_frame->linesize[0] + x + 0] = 255;
-    //         outStream->in_frame->data[0][y * outStream->in_frame->linesize[0] + x + 1] = 255;
-    //         outStream->in_frame->data[0][y * outStream->in_frame->linesize[0] + x + 2] = 255;
-    //         outStream->in_frame->data[0][y * outStream->in_frame->linesize[0] + x + 3] = 255;
-    //     }
-    // }
-
-    // for (i32 y = 0; y < ctx->height; y++)
-    // {
-    //     for (i32 x = 0; x < ctx->width; x++)
-    //     {
-    //         i32 dstIdx = (y * ctx->width + x) * 4;
-
-    //         if (x >= encoder->video_width || y >= encoder->video_height)
-    //         {
-    //             outStream->in_frame->data[0][dstIdx + 0] = 0;
-    //             outStream->in_frame->data[0][dstIdx + 1] = 0;
-    //             outStream->in_frame->data[0][dstIdx + 2] = 0;
-    //             outStream->in_frame->data[0][dstIdx + 3] = 255;
-    //         }
-    //         else
-    //         {
-    //             i32 srcIdx = (y * encoder->video_width + x) * 4;
-
-    //             outStream->in_frame->data[0][dstIdx + 0] = encoder->video_data[srcIdx + 0];
-    //             outStream->in_frame->data[0][dstIdx + 1] = encoder->video_data[srcIdx + 1];
-    //             outStream->in_frame->data[0][dstIdx + 2] = encoder->video_data[srcIdx + 2];
-    //             outStream->in_frame->data[0][dstIdx + 3] = encoder->video_data[srcIdx + 3];
-    //         }
-    //     }
-        
-    // }
-    // memset(outStream->in_frame->data[0], 255, ctx->width * ctx->height * 4);
-
     AVCHECK(av_frame_make_writable(outStream->in_frame), "Failed making frame writable")
     AVCHECK(sws_scale(outStream->sws_ctx, (const u8* const*)outStream->in_frame->data,  outStream->in_frame->linesize, 0, outStream->in_frame->height,
                                                     outStream->out_frame->data, outStream->out_frame->linesize),
             "Failed resampling video");
-    // fill_yuv_image(outStream->out_frame, outStream->frame_count, ctx->width, ctx->height);
 
     outStream->out_frame->pts = outStream->frame_count++;
     write_frame(outStream, encoder->format_ctx, outStream->out_frame);
-
-    // if (outStream->frame_count >= 60)
-    //     ldcapture_StopRecording();
 }
 
 void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder)
@@ -374,23 +304,13 @@ void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder)
     output_stream_t* outStream = &encoder->audio_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    // INFO("1: %p", outStream->frame);
-    // INFO("2: %p", outStream->frame->data);
-    // INFO("3: %p", outStream->frame->data[0]);
-    // INFO("4: %i", ctx->sample_fmt);
-
     f32* srcData = (f32*)encoder->sound_data;
     f32* dstData = (f32*)outStream->in_frame->data[0];
 
     for (int s = 0; s < encoder->sound_data_samples; s++)
     {
-        // TRACE("Sample: %i", s);
         for (int c = 0; c < encoder->sound_data_channels && c < ctx->ch_layout.nb_channels; c++)
         {
-            // TRACE("  Channel: %i", c);
-            // outStream->frame->data[0][outStream->frame_sample_pos * ctx->ch_layout.nb_channels + c]
-            //     = encoder->sound_data[s * encoder->sound_data_channels + c];
-            // TRACE("Idx: %i", outStream->frame_sample_pos * ctx->ch_layout.nb_channels + c);
             dstData[outStream->frame_sample_pos * ctx->ch_layout.nb_channels + c] = srcData[s * encoder->sound_data_channels + c];
         }
 
@@ -398,7 +318,6 @@ void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder)
         if (outStream->frame_sample_pos >= outStream->in_frame->nb_samples)
         {
             // This frame is completely filled with data
-
             i32 dstSampleCount = av_rescale_rnd(swr_get_delay(outStream->swr_ctx, ctx->sample_rate) + outStream->in_frame->nb_samples,
                                                 ctx->sample_rate, ctx->sample_rate, AV_ROUND_UP);
 
@@ -410,20 +329,8 @@ void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder)
             outStream->out_frame->pts = av_rescale_q(outStream->samples_count, (AVRational){ .num = 1, .den = ctx->sample_rate }, ctx->time_base);
             outStream->samples_count += outStream->out_frame->nb_samples;
             outStream->frame_sample_pos = 0;
-            // INFO("PTS: %i", outStream->out_frame->pts);
+
             write_frame(outStream, encoder->format_ctx, outStream->out_frame);
         }
     }
-    // AVCHECK(av_frame_make_writable(encoder->frame), "Failed making frame writable");
-    // uint16_t* samples = (uint16_t*)encoder->frame->data[0];
-
-    // for (i32 j = 0; j < encoder->codec_ctx->frame_size; j++) {
-    //     samples[2 * j] = 25000;
-
-    //     for (i32 k = 1; k < encoder->codec_ctx->ch_layout.nb_channels; k++)
-    //         samples[2 * j + k] = samples[2 * j];
-    // }
-
-    // encode(encoder->format_ctx, encoder->codec_ctx, encoder->frame, encoder->packet);
-    
 }

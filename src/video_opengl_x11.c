@@ -40,7 +40,7 @@ static void capture_frame(Display* dpy)
 
     u8* srcData =  malloc(attr.width * attr.height * 4);
     glReadPixels(0, 0, attr.width, attr.height, GL_RGBA, GL_UNSIGNED_BYTE, srcData);
-    
+
     encoder_t* encoder = encoder_get_current();
     encoder_prepare_video(encoder, attr.width, attr.height);
 
@@ -69,14 +69,8 @@ static void capture_frame(Display* dpy)
     pthread_mutex_unlock(&mutex);
 }
 
-#include "api.h"
-int a = 0;
-
 SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 {
-    // if (a == 0)
-    //     ldcapture_StartRecording();
-
     if (timing_is_running())
     {
         timing_mark_video_ready();
@@ -84,13 +78,7 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
 
         timing_next_frame();
         capture_frame(dpy);
-        a++;
     }
-
-    // if (a >= 60) {
-    //     ldcapture_StopRecording();
-    //     a = -1;
-    // }
 
     orig_glXSwapBuffers(dpy, drawable);
 })
