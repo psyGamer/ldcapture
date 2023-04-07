@@ -4,6 +4,7 @@
 
 #include <fmod_common.h>
 
+#include "settings.h"
 #include "hook.h"
 #include "timing.h"
 #include "encoder.h"
@@ -38,7 +39,7 @@ static FMOD_DSP* dsp;
 static FMOD_CHANNELGROUP* master_group;
 
 static i32 total_recoded_samples_error = 0;
-static i32 target_recorded_samples = 48000 / 60;
+static i32 target_recorded_samples = 0;
 static i32 recorded_samples = 0;
 
 static bool allow_sound_capture = false;
@@ -195,6 +196,8 @@ void init_sound_fmod()
     hook_symbol(NULL, (void**)&fn_FMOD_ChannelGroup_AddDSP, "FMOD_ChannelGroup_AddDSP");
     hook_symbol(NULL, (void**)&fn_FMOD_ChannelGroup_RemoveDSP, "FMOD_ChannelGroup_RemoveDSP");
     hook_symbol(NULL, (void**)&fn_FMOD_DSP_Release, "FMOD_DSP_Release");
+
+    target_recorded_samples = 48000 / settings_fps();
 
     run_sound_worker = true;
     pthread_create(&sound_worker_thread, NULL, sound_worker, NULL);

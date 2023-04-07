@@ -8,7 +8,7 @@ ASSEMBLY := ldcapture
 EXTENSION := .so
 COMPILER_FLAGS := -fPIC
 INCLUDE_FLAGS := -Isrc -Ivendor -Ivendor/STC/include -Ivendor/FMOD
-LINKER_FLAGS := -shared -lm -ldl -lpulse -lpthread -lavformat -lavcodec -lswresample -lswscale -lavutil
+LINKER_FLAGS := -shared -lm -ldl -lpulse -lpthread -lavformat -lavcodec -lswresample -lswscale -lavutil -lconfig
 DEFINES := 
 
 SRC_FILES := $(shell find src -name *.c -or -name *.cpp)	# .c and .cpp files

@@ -57,8 +57,6 @@ void encoder_create(encoder_t* encoder, encoder_type_t type)
 
     if (!directory_exists(LDCAPTURE_RECORDINGS_DIRECTORY))
         create_directory(LDCAPTURE_RECORDINGS_DIRECTORY);
-    if (!directory_exists(encoder->save_directory))
-        create_directory(encoder->save_directory);
 
     switch (type)
     {

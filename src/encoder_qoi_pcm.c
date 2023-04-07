@@ -25,6 +25,9 @@ void encoder_qoi_pcm_create(encoder_qoi_pcm_t* encoder)
     encoder->sound_data_size = 0;
     encoder->sound_data_buffer_size = 0;
 
+    if (!directory_exists(encoder->save_directory))
+        create_directory(encoder->save_directory);
+
     char path[1024];
     sprintf(path, "%s/audio.raw", encoder->save_directory);
     encoder->sound_file = fopen(path, "wb");

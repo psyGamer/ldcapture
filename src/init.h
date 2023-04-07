@@ -7,6 +7,10 @@ bool is_initialized_ldcapture();
 void shutdown_ldcapture();
 bool is_shutdown_done_ldcapture();
 
+// settings.c
+void init_settings();
+void shutdown_settings();
+
 // encoder.c
 void init_encoder();
 void shutdown_encoder();

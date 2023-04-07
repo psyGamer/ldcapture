@@ -2,12 +2,12 @@
 
 #include <time.h>
 
+#include "settings.h"
 #include "hook.h"
 
 static const u32 SECONDS_TO_NANOSECONDS = 1000000000; // 10^9
 
-static const u32 TARGET_FPS = 60;
-static const u64 TARGET_TIMESTEP_INC = (u64)((1.0 / TARGET_FPS)*  SECONDS_TO_NANOSECONDS);
+static u32 timestep_inc = 0;
 
 static u32 currentFrame = 0;
 static u64 currentTimestamp = -1;
@@ -83,7 +83,7 @@ void timing_next_frame()
     currentFrame++;
 
     if (currentTimestamp == -1) currentTimestamp = get_current_timestamp();
-    currentTimestamp += TARGET_TIMESTEP_INC;
+    currentTimestamp += timestep_inc;
     currentRealTimestamp = get_current_timestamp();
 
     // Order is important here, since clearing sound first might cause a race condition,
@@ -105,14 +105,15 @@ bool timing_is_sound_done() { return soundDone; }
 
 bool timing_is_realtime_frame_done()
 {
-    return currentRealTimestamp == -1 || ((get_current_timestamp() - currentRealTimestamp) > TARGET_TIMESTEP_INC);
+    return currentRealTimestamp == -1 || ((get_current_timestamp() - currentRealTimestamp) > timestep_inc);
 }
 
-i32 timing_get_target_fps() { return TARGET_FPS; }
 i32 timing_get_current_frame() { return currentFrame; }
 
 void init_timing_linux()
 {
     LOAD_SYM_HOOK(clock_gettime);
     LOAD_SYM_HOOK(SystemNative_GetTimestamp);
+
+    timestep_inc = (u64)((1.0 / settings_fps())*  SECONDS_TO_NANOSECONDS);
 }

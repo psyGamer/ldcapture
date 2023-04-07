@@ -8,6 +8,8 @@ void init_ldcapture()
 
     TRACE("Initializing...");
 
+    init_settings();
+
     init_encoder();
 
     init_video_opengl_x11();
@@ -33,6 +35,8 @@ void shutdown_ldcapture()
 
     while (!is_shutdown_done_ldcapture())
     ;
+
+    shutdown_settings();
 
     TRACE("Shut down");
 

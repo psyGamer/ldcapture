@@ -17,5 +17,4 @@ bool timing_is_sound_done();
 
 bool timing_is_realtime_frame_done();
 
-i32 timing_get_target_fps();
 i32 timing_get_current_frame();

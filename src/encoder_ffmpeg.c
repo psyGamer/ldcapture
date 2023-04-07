@@ -1,7 +1,9 @@
 #include <libavutil/opt.h>
 
+#include "settings.h"
 #include "encoder.h"
 #include "encoder_ffmpeg.h"
+#include "filesystem.h"
 #include "util/math.h"
 
 #define AVCHECK(fn, errMsg) {                 \
@@ -28,31 +30,20 @@ static void add_stream(encoder_ffmpeg_t* encoder, output_stream_t* outStream, co
     {
     case AVMEDIA_TYPE_VIDEO:
         ctx->codec_id = codecId;
-        ctx->bit_rate = 1000000;
-        ctx->width = encoder->video_width;
-        ctx->height = encoder->video_height;
-
-        outStream->stream->time_base = (AVRational){ .num = 1, .den = 60 };
-        ctx->time_base = outStream->stream->time_base;
+        ctx->bit_rate = settings_video_bitrate();
+        ctx->width = settings_video_width();
+        ctx->height = settings_video_height();
+        ctx->time_base = (AVRational){ 1, settings_fps() * 10000 };
+        ctx->framerate = (AVRational){ settings_fps(), 1 };
         ctx->gop_size = 12;
         ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+
+        outStream->stream->time_base = ctx->time_base;
         break;
     case AVMEDIA_TYPE_AUDIO:
         ctx->sample_fmt = (*codec)->sample_fmts ? (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-        ctx->bit_rate = 64000;
-        ctx->sample_rate = 44100;
-
-        if ((*codec)->supported_samplerates)
-        {
-            ctx->sample_rate = (*codec)->supported_samplerates[0];
-            for (i32 i = 0; (*codec)->supported_samplerates[i]; i++)
-            {
-                if ((*codec)->supported_samplerates[i] == 44100)
-                    ctx->sample_rate = 44100;
-            }
-        }
-
-        ctx->sample_rate = 48000;
+        ctx->bit_rate = settings_audio_bitrate();
+        ctx->sample_rate = settings_audio_samplerate();
 
         AVCHECK(av_channel_layout_copy(&ctx->ch_layout, &(AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO), "Failed copying channel layout");
         outStream->stream->time_base = (AVRational){ .num = 1, .den = ctx->sample_rate };
@@ -103,9 +94,11 @@ static void open_video(encoder_ffmpeg_t* encoder, const AVCodec* codec)
     AVCodecContext* ctx = outStream->codec_ctx;
 
     AVDictionary* options = { 0 };
-    av_dict_set(&options, "crf", "27", 0);
-    av_dict_set(&options, "preset", "medium", 0);
-    av_dict_set(&options, "tune", "zerolatency", 0);
+    for (i32 i = 0; i < settings_codec_options_length(); i++)
+    {
+        codec_option_t* option = &settings_codec_options()[i];
+        av_dict_set(&options, option->name, option->value, 0);
+    }
 
     AVCHECK(avcodec_open2(ctx, codec, &options), "Could not open video codec");
     outStream->in_frame = alloc_video_frame(AV_PIX_FMT_RGBA, ctx->width, ctx->height);
@@ -127,12 +120,7 @@ static void open_audio(encoder_ffmpeg_t* encoder, const AVCodec* codec)
 
     AVCHECK(avcodec_open2(ctx, codec, NULL), "Could not open audio codec");
 
-    i32 sampleCount;
-    if (ctx->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE)
-        sampleCount = 10000;
-    else
-        sampleCount = ctx->frame_size;
-
+    i32 sampleCount = ctx->frame_size;
     outStream->in_frame  = alloc_audio_frame(AV_SAMPLE_FMT_FLT, &ctx->ch_layout, ctx->sample_rate, sampleCount);
     outStream->out_frame = alloc_audio_frame(ctx->sample_fmt, &ctx->ch_layout, ctx->sample_rate, sampleCount);
     outStream->frame_count = 0;
@@ -166,6 +154,9 @@ static void write_frame(output_stream_t* outStream, AVFormatContext* formatCtx, 
             ERROR("Error encoding audio frame: %s", errbuf);
         }
 
+        if (frame)
+            outStream->packet->duration = frame->duration;
+
         av_packet_rescale_ts(outStream->packet, outStream->codec_ctx->time_base, outStream->stream->time_base);
         outStream->packet->stream_index = outStream->stream->index;
         AVCHECK(av_interleaved_write_frame(formatCtx, outStream->packet), "Failed writing output packet")
@@ -185,11 +176,11 @@ void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder)
     encoder->video_stream = (output_stream_t){0};
     encoder->audio_stream = (output_stream_t){0};
 
-    const char* outputFile = "ffmpeg-encode.mkv";
+    INFO("%s.%s", encoder->save_directory, settings_outfile_type());
+    char outputFile[1024];
+    sprintf(outputFile, "%s.%s", encoder->save_directory, settings_outfile_type());
 
     AVCHECK(avformat_alloc_output_context2(&encoder->format_ctx, NULL, NULL, outputFile), "Failed allocating format context");
-    INFO("VIDEO CODEC: %s", avcodec_get_name(encoder->format_ctx->oformat->video_codec));
-    INFO("AUDIO CODEC: %s", avcodec_get_name(encoder->format_ctx->oformat->audio_codec));
 
     enum AVCodecID video_codec_id = encoder->format_ctx->oformat->video_codec;
     enum AVCodecID audio_codec_id = encoder->format_ctx->oformat->audio_codec;
@@ -274,7 +265,6 @@ void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, s
     if (encoder->sound_data_buffer_size < encoder->sound_data_size)
     {
         encoder->sound_data_buffer_size = encoder->sound_data_size * 2; // Avoid having to reallocate soon
-        INFO("Allocing: %i", encoder->sound_data_buffer_size);
         encoder->sound_data = realloc(encoder->sound_data, encoder->sound_data_buffer_size);
 
         if (encoder->sound_data == NULL)
@@ -292,10 +282,12 @@ void encoder_ffmpeg_flush_video(encoder_ffmpeg_t* encoder)
 
     AVCHECK(av_frame_make_writable(outStream->in_frame), "Failed making frame writable")
     AVCHECK(sws_scale(outStream->sws_ctx, (const u8* const*)outStream->in_frame->data,  outStream->in_frame->linesize, 0, outStream->in_frame->height,
-                                                    outStream->out_frame->data, outStream->out_frame->linesize),
+                                                            outStream->out_frame->data, outStream->out_frame->linesize),
             "Failed resampling video");
 
-    outStream->out_frame->pts = outStream->frame_count++;
+    outStream->out_frame->duration = ctx->time_base.den / ctx->time_base.num / ctx->framerate.num * ctx->framerate.den;
+    outStream->out_frame->pts = outStream->frame_count++ * outStream->out_frame->duration;
+
     write_frame(outStream, encoder->format_ctx, outStream->out_frame);
 }
 
