@@ -40,6 +40,12 @@ static bool catch_api_symbol(const char* name, void* *outApiSymbol)
         *outApiSymbol = ldcapture_StopRecording;
         return true;
     }
+    if (strcmp(name, "ldcapture_StopRecordingAfter") == 0)
+    {
+        TRACE("Loaded API function: ldcapture_StopRecordingAfter");
+        *outApiSymbol = ldcapture_StopRecordingAfter;
+        return true;
+    }
 
     // Slightly hacky way of invoking these functions by just loading a symbol
     if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)

@@ -58,7 +58,7 @@ void init_settings()
     }
 }
 
-void settings_shutdown()
+void shutdown_settings()
 {
     config_destroy(&config);
 }

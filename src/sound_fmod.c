@@ -80,7 +80,10 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer
         }
     }
 
-    if (!timing_is_running()) return FMOD_OK;
+    if (!timing_is_running()) {
+        timing_sound_finished();
+        return FMOD_OK;
+    }
     while(timing_is_running() && !allow_sound_capture);
     if (!timing_is_running()) return FMOD_OK;
 

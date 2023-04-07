@@ -79,6 +79,10 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
         timing_next_frame();
         capture_frame(dpy);
     }
+    else
+    {
+        timing_video_finished();
+    }
 
     orig_glXSwapBuffers(dpy, drawable);
 })

@@ -3,7 +3,9 @@
 #include <time.h>
 
 #include "settings.h"
+#include "encoder.h"
 #include "hook.h"
+#include "api.h"
 
 static const u32 SECONDS_TO_NANOSECONDS = 1000000000; // 10^9
 
@@ -14,14 +16,20 @@ static u64 currentTimestamp = -1;
 static u64 currentRealTimestamp = -1;
 
 static bool fixedFPS = false;
+static bool use_extension_frames = false;
+static i32 extension_frames = 0;
 
 static bool videoReady = false;
 static bool soundDone = false;
 
+static bool video_finished = false;
+static bool sound_finished = false;
+static bool pending_finish = false;
+
 // .NET Core
 SYM_HOOK(u64, SystemNative_GetTimestamp, (void),
 {
-    if (!fixedFPS) return orig_SystemNative_GetTimestamp();
+    if (!timing_is_running()) return orig_SystemNative_GetTimestamp();
     if (currentTimestamp == -1) currentTimestamp = orig_SystemNative_GetTimestamp();
     return currentTimestamp;
 })
@@ -29,14 +37,14 @@ SYM_HOOK(u64, SystemNative_GetTimestamp, (void),
 // System Wide
 SYM_HOOK(i32, clock_gettime, (clockid_t clockID, struct timespec* ts),
 {
-    if (!fixedFPS) return orig_clock_gettime(clockID, ts);
+    if (!timing_is_running()) return orig_clock_gettime(clockID, ts);
     // Use more specific hook if available
     if (orig_SystemNative_GetTimestamp != NULL) return orig_clock_gettime(clockID, ts);
 
     if (currentTimestamp == -1)
     {
         i32 result = orig_clock_gettime(clockID, ts);
-        currentTimestamp = ts->tv_sec*  SECONDS_TO_NANOSECONDS + ts->tv_nsec;
+        currentTimestamp = ts->tv_sec * SECONDS_TO_NANOSECONDS + ts->tv_nsec;
         return result;
     }
     else
@@ -58,7 +66,7 @@ static u64 get_current_timestamp()
     else
         clock_gettime(CLOCK_MONOTONIC, &ts);
     
-    return ts.tv_sec*  SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
+    return ts.tv_sec * SECONDS_TO_NANOSECONDS + ts.tv_nsec;;
 }
 
 void timing_start()
@@ -75,7 +83,16 @@ void timing_start()
 void timing_stop()
 {
     INFO("Recording stopped");
+    video_finished = false;
+    sound_finished = false;
+    pending_finish = true;
     fixedFPS = false;
+}
+void timing_stop_after(i32 extensionFrames)
+{
+    INFO("Stopping recording after: %i", extensionFrames);
+    extension_frames = extensionFrames;
+    use_extension_frames = true;
 }
 
 void timing_next_frame()
@@ -91,6 +108,17 @@ void timing_next_frame()
     videoReady = false;
     soundDone = false;
 
+    if (use_extension_frames)
+    {
+        extension_frames--;
+
+        if (extension_frames <= 0)
+        {
+            use_extension_frames = false;
+            timing_stop();
+        }
+    }
+
     TRACE("Current frame: %i", currentFrame);
 }
 
@@ -99,6 +127,15 @@ bool timing_is_running() { return fixedFPS; }
 
 void timing_mark_video_ready() { videoReady = true; }
 void timing_mark_sound_done() { soundDone = true; }
+
+static void end_encoding() {
+    video_finished = false;
+    sound_finished = false;
+    pending_finish = false;
+    encoder_destroy(encoder_get_current()); 
+}
+void timing_video_finished() { video_finished = true; if (pending_finish && sound_finished) end_encoding(); }
+void timing_sound_finished() { sound_finished = true; if (pending_finish && video_finished) end_encoding(); }
 
 bool timing_is_video_ready() { return videoReady; }
 bool timing_is_sound_done() { return soundDone; }
