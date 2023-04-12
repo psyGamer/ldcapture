@@ -15,6 +15,14 @@ i32 settings_video_height();
 i32 settings_video_bitrate();
 i32 settings_audio_bitrate();
 i32 settings_audio_samplerate();
-const char* settings_outfile_type();
-codec_option_t* settings_codec_options();
-i32 settings_codec_options_length();
+
+bool settings_overwrite_video_codec();
+bool settings_overwrite_audio_codec();
+const char* settings_video_codec();
+const char* settings_audio_codec();
+const char* settings_container_type();
+
+codec_option_t* settings_video_codec_options();
+codec_option_t* settings_audio_codec_options();
+i32 settings_video_codec_options_length();
+i32 settings_audio_codec_options_length();

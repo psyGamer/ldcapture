@@ -15,18 +15,16 @@
         }                                     \
     }
 
-static void add_stream(encoder_ffmpeg_t* encoder, output_stream_t* outStream, const AVCodec** codec, enum AVCodecID codecId)
+static void add_stream(encoder_ffmpeg_t* encoder, output_stream_t* outStream, const AVCodec* codec, enum AVCodecID codecId)
 {
-    *codec = avcodec_find_encoder(codecId);
-
     outStream->packet = av_packet_alloc();
     outStream->stream = avformat_new_stream(encoder->format_ctx, NULL);
     outStream->stream->id = encoder->format_ctx->nb_streams - 1;
-    outStream->codec_ctx = avcodec_alloc_context3(*codec);
+    outStream->codec_ctx = avcodec_alloc_context3(codec);
 
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    switch ((*codec)->type)
+    switch (codec->type)
     {
     case AVMEDIA_TYPE_VIDEO:
         ctx->codec_id = codecId;
@@ -41,7 +39,7 @@ static void add_stream(encoder_ffmpeg_t* encoder, output_stream_t* outStream, co
         outStream->stream->time_base = ctx->time_base;
         break;
     case AVMEDIA_TYPE_AUDIO:
-        ctx->sample_fmt = (*codec)->sample_fmts ? (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+        ctx->sample_fmt = codec->sample_fmts ? codec->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
         ctx->bit_rate = settings_audio_bitrate();
         ctx->sample_rate = settings_audio_samplerate();
 
@@ -176,26 +174,34 @@ void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder)
     encoder->video_stream = (output_stream_t){0};
     encoder->audio_stream = (output_stream_t){0};
 
-    INFO("%s.%s", encoder->save_directory, settings_outfile_type());
+    INFO("%s.%s", encoder->save_directory, settings_container_type());
     char outputFile[1024];
-    sprintf(outputFile, "%s.%s", encoder->save_directory, settings_outfile_type());
+    sprintf(outputFile, "%s.%s", encoder->save_directory, settings_container_type());
 
     AVCHECK(avformat_alloc_output_context2(&encoder->format_ctx, NULL, NULL, outputFile), "Failed allocating format context");
 
     enum AVCodecID video_codec_id = encoder->format_ctx->oformat->video_codec;
     enum AVCodecID audio_codec_id = encoder->format_ctx->oformat->audio_codec;
+
     const AVCodec* video_codec = NULL;
+    if (settings_overwrite_video_codec())
+        video_codec = avcodec_find_encoder_by_name(settings_video_codec());
+    else if (video_codec_id != AV_CODEC_ID_NONE)
+        video_codec = avcodec_find_encoder(video_codec_id);
+
     const AVCodec* audio_codec = NULL;
-    if (video_codec_id != AV_CODEC_ID_NONE)
-    {
-        add_stream(encoder, &encoder->video_stream, &video_codec, video_codec_id);
-        encoder->has_video = true;
-    }
-    if (audio_codec_id != AV_CODEC_ID_NONE)
-    {
-        add_stream(encoder, &encoder->audio_stream, &audio_codec, audio_codec_id);
-        encoder->has_audio = true;
-    }
+    if (settings_overwrite_audio_codec())
+        audio_codec = avcodec_find_encoder_by_name(settings_audio_codec());
+    else if (video_codec_id != AV_CODEC_ID_NONE)
+        audio_codec = avcodec_find_encoder(audio_codec_id);
+
+    encoder->has_video = video_codec != NULL;
+    encoder->has_audio = audio_codec != NULL;
+
+    if (encoder->has_video)
+        add_stream(encoder, &encoder->video_stream, video_codec, video_codec_id);
+    if (encoder->has_audio)
+        add_stream(encoder, &encoder->audio_stream, audio_codec, audio_codec_id);
 
     if (encoder->has_video)
         open_video(encoder, video_codec);
