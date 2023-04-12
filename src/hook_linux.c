@@ -46,6 +46,12 @@ static bool catch_api_symbol(const char* name, void* *outApiSymbol)
         *outApiSymbol = ldcapture_StopRecordingAfter;
         return true;
     }
+    if (strcmp(name, "ldcapture_ReloadConfig") == 0)
+    {
+        TRACE("Loaded API function: ldcapture_ReloadConfig");
+        *outApiSymbol = ldcapture_ReloadConfig;
+        return true;
+    }
 
     // Slightly hacky way of invoking these functions by just loading a symbol
     if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)
@@ -55,11 +61,18 @@ static bool catch_api_symbol(const char* name, void* *outApiSymbol)
         ldcapture_StartRecording();
         return true;
     }
-    else if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
+    if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
     {
         TRACE("Invoked API function: ldcapture_StopRecording");
         *outApiSymbol = NULL;
         ldcapture_StopRecording();
+        return true;
+    }
+    if (strcmp(name, "INVOKE_ldcapture_ReloadConfig") == 0)
+    {
+        TRACE("Invoked API function: ldcapture_ReloadConfig");
+        *outApiSymbol = NULL;
+        ldcapture_ReloadConfig();
         return true;
     }
     

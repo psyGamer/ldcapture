@@ -1,6 +1,7 @@
 #include "api.h"
 #include "timing.h"
 #include "encoder.h"
+#include "settings.h"
 
 void ldcapture_StartRecording()
 {
@@ -16,4 +17,9 @@ void ldcapture_StopRecording()
 void ldcapture_StopRecordingAfter(i32 extensionFrames)
 {
     timing_stop_after(extensionFrames);
+}
+
+void ldcapture_ReloadConfig()
+{
+    settings_reload();
 }
