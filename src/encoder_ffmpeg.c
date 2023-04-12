@@ -92,13 +92,14 @@ static void open_video(encoder_ffmpeg_t* encoder, const AVCodec* codec)
     AVCodecContext* ctx = outStream->codec_ctx;
 
     AVDictionary* options = { 0 };
-    for (i32 i = 0; i < settings_codec_options_length(); i++)
+    for (i32 i = 0; i < settings_video_codec_options_length(); i++)
     {
-        codec_option_t* option = &settings_codec_options()[i];
+        codec_option_t* option = &settings_video_codec_options()[i];
         av_dict_set(&options, option->name, option->value, 0);
     }
 
     AVCHECK(avcodec_open2(ctx, codec, &options), "Could not open video codec");
+
     outStream->in_frame = alloc_video_frame(AV_PIX_FMT_RGBA, ctx->width, ctx->height);
     outStream->out_frame = alloc_video_frame(ctx->pix_fmt, ctx->width, ctx->height);
     outStream->frame_sample_pos = 0;
@@ -116,7 +117,14 @@ static void open_audio(encoder_ffmpeg_t* encoder, const AVCodec* codec)
     output_stream_t* outStream = &encoder->audio_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    AVCHECK(avcodec_open2(ctx, codec, NULL), "Could not open audio codec");
+    AVDictionary* options = { 0 };
+    for (i32 i = 0; i < settings_audio_codec_options_length(); i++)
+    {
+        codec_option_t* option = &settings_audio_codec_options()[i];
+        av_dict_set(&options, option->name, option->value, 0);
+    }
+
+    AVCHECK(avcodec_open2(ctx, codec, &options), "Could not open audio codec");
 
     i32 sampleCount = ctx->frame_size;
     outStream->in_frame  = alloc_audio_frame(AV_SAMPLE_FMT_FLT, &ctx->ch_layout, ctx->sample_rate, sampleCount);

@@ -26,3 +26,5 @@ codec_option_t* settings_video_codec_options();
 codec_option_t* settings_audio_codec_options();
 i32 settings_video_codec_options_length();
 i32 settings_audio_codec_options_length();
+
+void settings_reload();

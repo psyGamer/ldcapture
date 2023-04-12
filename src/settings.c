@@ -48,9 +48,9 @@ static void readCodecOptions(config_setting_t* configSetting, codec_option_t** c
     free(*codecOptions);
     *codecOptions = malloc(sizeof(codec_option_t) * *codecOptionsLength);
 
-    for (i32 i = 0; i < video_codec_options; i++)
+    for (i32 i = 0; i < *codecOptionsLength; i++)
     {
-        config_setting_t* option = config_setting_get_elem(codecOptions, i);
+        config_setting_t* option = config_setting_get_elem(configSetting, i);
         (*codecOptions)[i] = (codec_option_t){
             .name = strdup(option->name),
             .value = strdup(option->value.sval),
