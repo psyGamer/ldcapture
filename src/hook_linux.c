@@ -26,64 +26,37 @@ static void init_dlsym()
     init_ldcapture(); // Before orig_dlsym gets loaded, nothing excpet LD_PRELOAD could've executed.
 }
 
-static bool catch_api_symbol(const char* name, void* *outApiSymbol)
+static void* catch_api_symbol(const char* name)
 {
     if (strcmp(name, "ldcapture_StartRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StartRecording");
-        *outApiSymbol = ldcapture_StartRecording;
-        return true;
+        return ldcapture_StartRecording;
     }
     if (strcmp(name, "ldcapture_StopRecording") == 0)
     {
         TRACE("Loaded API function: ldcapture_StopRecording");
-        *outApiSymbol = ldcapture_StopRecording;
-        return true;
+        return ldcapture_StopRecording;
     }
     if (strcmp(name, "ldcapture_StopRecordingAfter") == 0)
     {
         TRACE("Loaded API function: ldcapture_StopRecordingAfter");
-        *outApiSymbol = ldcapture_StopRecordingAfter;
-        return true;
+        return ldcapture_StopRecordingAfter;
     }
     if (strcmp(name, "ldcapture_ReloadConfig") == 0)
     {
         TRACE("Loaded API function: ldcapture_ReloadConfig");
-        *outApiSymbol = ldcapture_ReloadConfig;
-        return true;
+        return ldcapture_ReloadConfig;
     }
 
-    // Slightly hacky way of invoking these functions by just loading a symbol
-    if (strcmp(name, "INVOKE_ldcapture_StartRecording") == 0)
-    {
-        TRACE("Invoked API function: INVOKE_ldcapture_StartRecording");
-        *outApiSymbol = NULL;
-        ldcapture_StartRecording();
-        return true;
-    }
-    if (strcmp(name, "INVOKE_ldcapture_StopRecording") == 0)
-    {
-        TRACE("Invoked API function: ldcapture_StopRecording");
-        *outApiSymbol = NULL;
-        ldcapture_StopRecording();
-        return true;
-    }
-    if (strcmp(name, "INVOKE_ldcapture_ReloadConfig") == 0)
-    {
-        TRACE("Invoked API function: ldcapture_ReloadConfig");
-        *outApiSymbol = NULL;
-        ldcapture_ReloadConfig();
-        return true;
-    }
-    
-    return false;
+    return NULL;
 }
 
 void* dlsym(void* handle, const char* name) {
     if (orig_dlsym == NULL) init_dlsym();
 
-    void* apiSym = NULL;
-    if (catch_api_symbol(name, &apiSym))
+    void* apiSym = catch_api_symbol(name);
+    if (apiSym != NULL)
         return apiSym;
 
     // If something tries load dlsym with dlsym (IDK why you'd every do this, but some programs do it, so...)
