@@ -71,6 +71,7 @@ static u64 get_current_timestamp()
 
 void timing_start()
 {
+    timestep_inc = (u64)((1.0 / settings_fps())*  SECONDS_TO_NANOSECONDS);
     INFO("Recording started");
     fixedFPS = true;
     currentFrame = 0;
@@ -151,6 +152,4 @@ void init_timing_linux()
 {
     LOAD_SYM_HOOK(clock_gettime);
     LOAD_SYM_HOOK(SystemNative_GetTimestamp);
-
-    timestep_inc = (u64)((1.0 / settings_fps())*  SECONDS_TO_NANOSECONDS);
 }
