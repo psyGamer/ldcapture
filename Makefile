@@ -20,11 +20,9 @@ all: scaffold compile link
 debug: COMPILER_FLAGS += -g -O0
 debug: LINKER_FLAGS += 
 debug: DEFINES += -DDEBUG
-debug: EXTENSION := -debug.so
 debug: all
 release: COMPILER_FLAGS += -O2
 release: DEFINES += -DRELEASE
-release: EXTENSION := -release.so
 release: all
 
 .PHONY: scaffold
