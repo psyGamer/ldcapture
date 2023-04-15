@@ -84,6 +84,10 @@ When starting Celeste, you should specify the `LD_LIBRARY_PATH` to avoid Celeste
 
 `$ LD_PRELOAD="path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux" ./Celeste`
 
+## Suport
+
+If you need help setting this up, have a features request or a bug report, please open an issue here. Alternativly, you can DM me on Discord or ping me in the [Celeste Discord](https://discord.gg/celeste): psyGamer#8442
+
 ## Credits
 
 This project was mainly inspired by [.kkapture](https://github.com/DemoJameson/kkapture).
