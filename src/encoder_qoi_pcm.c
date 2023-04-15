@@ -19,18 +19,18 @@ const char* ENCODE_VIDEO_SCRIPT =
 
 void encoder_qoi_pcm_create(encoder_qoi_pcm_t* encoder)
 {
-    encoder->sound_data_channels = 0;
-    encoder->sound_data_samples = 0;
-    encoder->sound_data_format = 0;
-    encoder->sound_data_size = 0;
-    encoder->sound_data_buffer_size = 0;
+    encoder->audio_data_channels = 0;
+    encoder->audio_data_samples = 0;
+    encoder->audio_data_format = 0;
+    encoder->audio_data_size = 0;
+    encoder->audio_data_buffer_size = 0;
 
     if (!directory_exists(encoder->save_directory))
         create_directory(encoder->save_directory);
 
     char path[1024];
     sprintf(path, "%s/audio.raw", encoder->save_directory);
-    encoder->sound_file = fopen(path, "wb");
+    encoder->audio_file = fopen(path, "wb");
 
     sprintf(path, "%s/frames", encoder->save_directory);
     if (!directory_exists(path))
@@ -45,8 +45,8 @@ void encoder_qoi_pcm_create(encoder_qoi_pcm_t* encoder)
 
 void encoder_qoi_pcm_destroy(encoder_qoi_pcm_t* encoder)
 {
-    fflush(encoder->sound_file);
-    fclose(encoder->sound_file);
+    fflush(encoder->audio_file);
+    fclose(encoder->audio_file);
 }
 
 void encoder_qoi_pcm_prepare_video(encoder_qoi_pcm_t* encoder, u32 width, u32 height)
@@ -64,20 +64,20 @@ void encoder_qoi_pcm_prepare_video(encoder_qoi_pcm_t* encoder, u32 width, u32 he
     }
 }
 
-void encoder_qoi_pcm_prepare_sound(encoder_qoi_pcm_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
+void encoder_qoi_pcm_prepare_audio(encoder_qoi_pcm_t* encoder, u32 channelCount, size_t sampleCount, encoder_audio_format_t format)
 {
-    size_t srcVarSize = get_sound_format_size(format);
-    size_t dstVarSize = get_sound_format_size(encoder->sound_format);
+    size_t srcVarSize = get_audio_format_size(format);
+    size_t dstVarSize = get_audio_format_size(encoder->audio_format);
 
-    encoder->sound_data_size = max(channelCount, encoder->sound_channels) * max(srcVarSize, dstVarSize) * sampleCount;
-    encoder->sound_data_channels = channelCount;
-    encoder->sound_data_format = format;
+    encoder->audio_data_size = max(channelCount, encoder->audio_channels) * max(srcVarSize, dstVarSize) * sampleCount;
+    encoder->audio_data_channels = channelCount;
+    encoder->audio_data_format = format;
 
-    if (encoder->sound_data_buffer_size < encoder->sound_data_size)
+    if (encoder->audio_data_buffer_size < encoder->audio_data_size)
     {
-        free(encoder->sound_data);
-        encoder->sound_data_buffer_size = encoder->sound_data_size * 2; // Avoid having to reallocate soon
-        encoder->sound_data = realloc(encoder->sound_data, encoder->sound_data_buffer_size);
+        free(encoder->audio_data);
+        encoder->audio_data_buffer_size = encoder->audio_data_size * 2; // Avoid having to reallocate soon
+        encoder->audio_data = realloc(encoder->audio_data, encoder->audio_data_buffer_size);
     }
 }
 
@@ -99,85 +99,85 @@ void encoder_qoi_pcm_flush_video(encoder_qoi_pcm_t* encoder)
     qoi_write(filePath, encoder->video_data, &desc);
 }
 
-void encoder_qoi_pcm_flush_sound(encoder_qoi_pcm_t* encoder)
+void encoder_qoi_pcm_flush_audio(encoder_qoi_pcm_t* encoder)
 {
     // Transcode the data if nessecery
     // No reallocations need since the buffer should already be large enough
-    if (encoder->sound_channels != encoder->sound_data_channels)
+    if (encoder->audio_channels != encoder->audio_data_channels)
     {
-        u8* origData = malloc(encoder->sound_data_buffer_size);
-        memcpy(origData, encoder->sound_data, encoder->sound_data_size);
+        u8* origData = malloc(encoder->audio_data_buffer_size);
+        memcpy(origData, encoder->audio_data, encoder->audio_data_size);
 
-        size_t dataVarSize = get_sound_format_size(encoder->sound_data_format);
+        size_t dataVarSize = get_audio_format_size(encoder->audio_data_format);
 
-        if (encoder->sound_data_channels > encoder->sound_channels)
+        if (encoder->audio_data_channels > encoder->audio_channels)
         {
             // Cut the remaining channels off
-            for (i32 sample = 0; sample < encoder->sound_data_samples; sample++)
+            for (i32 sample = 0; sample < encoder->audio_data_samples; sample++)
             {
-                memcpy(encoder->sound_data + sample * encoder->sound_channels, 
-                       origData            + sample * encoder->sound_data_channels,
-                       encoder->sound_channels * dataVarSize);
+                memcpy(encoder->audio_data + sample * encoder->audio_channels, 
+                       origData            + sample * encoder->audio_data_channels,
+                       encoder->audio_channels * dataVarSize);
             }
         }
         else
         {
             // Repeat the last channel to fill the remaining ones
-            for (i32 sample = 0; sample < encoder->sound_data_samples; sample++)
+            for (i32 sample = 0; sample < encoder->audio_data_samples; sample++)
             {
-                memcpy(encoder->sound_data + sample * encoder->sound_channels, 
-                       origData            + sample * encoder->sound_data_channels,
-                       encoder->sound_data_channels * dataVarSize);
-                i32 lastDataChannel = encoder->sound_data_channels - 1;
-                for (i32 channel = lastDataChannel; channel < encoder->sound_channels; channel++)
+                memcpy(encoder->audio_data + sample * encoder->audio_channels, 
+                       origData            + sample * encoder->audio_data_channels,
+                       encoder->audio_data_channels * dataVarSize);
+                i32 lastDataChannel = encoder->audio_data_channels - 1;
+                for (i32 channel = lastDataChannel; channel < encoder->audio_channels; channel++)
                 {
-                    encoder->sound_data[sample * encoder->sound_channels      + channel]
-                             = origData[sample * encoder->sound_data_channels + lastDataChannel];
+                    encoder->audio_data[sample * encoder->audio_channels      + channel]
+                             = origData[sample * encoder->audio_data_channels + lastDataChannel];
                 }
             }
         }
 
-        encoder->sound_data_size = encoder->sound_data_samples * encoder->sound_channels * dataVarSize;
+        encoder->audio_data_size = encoder->audio_data_samples * encoder->audio_channels * dataVarSize;
         free(origData);
     }
 
-    if (encoder->sound_format != encoder->sound_data_format)
+    if (encoder->audio_format != encoder->audio_data_format)
     {
         #define IMPL_FORMAT_TRANSCODE(srcType, dstType, act)                                                \
-            for (i32 i = 0, j = 0; i < encoder->sound_data_size; i += sizeof(srcType), j += sizeof(dstType)) \
+            for (i32 i = 0, j = 0; i < encoder->audio_data_size; i += sizeof(srcType), j += sizeof(dstType)) \
             {                                                                                                \
-                *(dstType *)(encoder->sound_data + j) = *(srcType *)(encoder->sound_data + i) act;        \
+                *(dstType *)(encoder->audio_data + j) = *(srcType *)(encoder->audio_data + i) act;        \
             }
 
-        switch (encoder->sound_format)
+        switch (encoder->audio_format)
         {
-        case ENCODER_SOUND_FORMAT_PCM_S16:
-            switch (encoder->sound_data_format)
+        case ENCODER_AUDIO_FORMAT_PCM_S16:
+            switch (encoder->audio_data_format)
             {
-            case ENCODER_SOUND_FORMAT_PCM_F32:
+            case ENCODER_AUDIO_FORMAT_PCM_F32:
                 IMPL_FORMAT_TRANSCODE(f32, i16, * 32767)
                 break;
             default:
-                ERROR("Invalid sound format: %i", encoder->sound_data_format);
+                ERROR("Invalid audio format: %i", encoder->audio_data_format);
             }
             break;
-        case ENCODER_SOUND_FORMAT_PCM_F32:
-            switch (encoder->sound_data_format)
+        case ENCODER_AUDIO_FORMAT_PCM_F32:
+            switch (encoder->audio_data_format)
             {
-            case ENCODER_SOUND_FORMAT_PCM_S16:
+            case ENCODER_AUDIO_FORMAT_PCM_S16:
                 IMPL_FORMAT_TRANSCODE(i16, f32, / 32767.0f)
                 break;
             default:
-                ERROR("Invalid sound format: %i", encoder->sound_data_format);
+                ERROR("Invalid audio format: %i", encoder->audio_data_format);
             }
             break;
         }
 
-        encoder->sound_data_size = encoder->sound_data_samples * encoder->sound_channels * get_sound_format_size(encoder->sound_format);
+        encoder->audio_data_size = encoder->audio_data_samples * encoder->audio_channels * get_audio_format_size(encoder->audio_format);
     }
 
-    encoder->sound_byte_count += encoder->sound_data_size;
-    fwrite(encoder->sound_data, 1, encoder->sound_data_size, encoder->sound_file);
+    encoder->audio_byte_count += encoder->audio_data_size;
+    fwrite(encoder->audio_data, 1, encoder->audio_data_size, encoder->audio_file);
 }
 
 

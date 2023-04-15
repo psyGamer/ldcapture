@@ -191,11 +191,11 @@ static void write_frame(output_stream_t* outStream, AVFormatContext* formatCtx, 
 
 void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder)
 {
-    encoder->sound_data_channels = 0;
-    encoder->sound_data_samples = 0;
-    encoder->sound_data_format = 0;
-    encoder->sound_data_size = 0;
-    encoder->sound_data_buffer_size = 0;
+    encoder->audio_data_channels = 0;
+    encoder->audio_data_samples = 0;
+    encoder->audio_data_format = 0;
+    encoder->audio_data_size = 0;
+    encoder->audio_data_buffer_size = 0;
     encoder->format_ctx = 0;
     encoder->has_video = false;
     encoder->has_audio = false;
@@ -286,24 +286,24 @@ void encoder_ffmpeg_prepare_video(encoder_ffmpeg_t* encoder, u32 width, u32 heig
     encoder->video_data = outStream->in_frame->data[0];
 }
 
-void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
+void encoder_ffmpeg_prepare_audio(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_audio_format_t format)
 {
-    size_t srcVarSize = get_sound_format_size(format);
-    size_t dstVarSize = get_sound_format_size(encoder->sound_format);
+    size_t srcVarSize = get_audio_format_size(format);
+    size_t dstVarSize = get_audio_format_size(encoder->audio_format);
 
-    encoder->sound_data_size = max(channelCount, encoder->sound_channels) * max(srcVarSize, dstVarSize) * sampleCount;
-    encoder->sound_data_samples = sampleCount;
-    encoder->sound_data_channels = channelCount;
-    encoder->sound_data_format = format;
+    encoder->audio_data_size = max(channelCount, encoder->audio_channels) * max(srcVarSize, dstVarSize) * sampleCount;
+    encoder->audio_data_samples = sampleCount;
+    encoder->audio_data_channels = channelCount;
+    encoder->audio_data_format = format;
 
-    if (encoder->sound_data_buffer_size < encoder->sound_data_size)
+    if (encoder->audio_data_buffer_size < encoder->audio_data_size)
     {
-        encoder->sound_data_buffer_size = encoder->sound_data_size * 2; // Avoid having to reallocate soon
-        encoder->sound_data = realloc(encoder->sound_data, encoder->sound_data_buffer_size);
+        encoder->audio_data_buffer_size = encoder->audio_data_size * 2; // Avoid having to reallocate soon
+        encoder->audio_data = realloc(encoder->audio_data, encoder->audio_data_buffer_size);
 
-        if (encoder->sound_data == NULL)
+        if (encoder->audio_data == NULL)
         {
-            FATAL("Failed to allocate sound buffer!");
+            FATAL("Failed to allocate audio buffer!");
             exit(1);
         }
     }
@@ -325,19 +325,19 @@ void encoder_ffmpeg_flush_video(encoder_ffmpeg_t* encoder)
     write_frame(outStream, encoder->format_ctx, outStream->out_frame);
 }
 
-void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder)
+void encoder_ffmpeg_flush_audio(encoder_ffmpeg_t* encoder)
 {
     output_stream_t* outStream = &encoder->audio_stream;
     AVCodecContext* ctx = outStream->codec_ctx;
 
-    f32* srcData = (f32*)encoder->sound_data;
+    f32* srcData = (f32*)encoder->audio_data;
     f32* dstData = (f32*)outStream->in_frame->data[0];
 
-    for (int s = 0; s < encoder->sound_data_samples; s++)
+    for (int s = 0; s < encoder->audio_data_samples; s++)
     {
-        for (int c = 0; c < encoder->sound_data_channels && c < ctx->ch_layout.nb_channels; c++)
+        for (int c = 0; c < encoder->audio_data_channels && c < ctx->ch_layout.nb_channels; c++)
         {
-            dstData[outStream->frame_sample_pos * ctx->ch_layout.nb_channels + c] = srcData[s * encoder->sound_data_channels + c];
+            dstData[outStream->frame_sample_pos * ctx->ch_layout.nb_channels + c] = srcData[s * encoder->audio_data_channels + c];
         }
 
         outStream->frame_sample_pos++;

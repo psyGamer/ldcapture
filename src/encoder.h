@@ -7,11 +7,11 @@ typedef enum encoder_type_t
     ENCODER_TYPE_FFMPEG,
 } encoder_type_t;
 
-typedef enum encoder_sound_format_t
+typedef enum encoder_audio_format_t
 {
-    ENCODER_SOUND_FORMAT_PCM_S16,
-    ENCODER_SOUND_FORMAT_PCM_F32,
-} encoder_sound_format_t;
+    ENCODER_AUDIO_FORMAT_PCM_S16,
+    ENCODER_AUDIO_FORMAT_PCM_F32,
+} encoder_audio_format_t;
 
 typedef struct encoder_t
 {
@@ -24,11 +24,11 @@ typedef struct encoder_t
     u32 video_frame_count;
     u32 video_row_stride;
 
-    u32 sound_channels;
-    u32 sound_freqency;
-    encoder_sound_format_t sound_format;
-    u8* sound_data;
-    size_t sound_byte_count;
+    u32 audio_channels;
+    u32 audio_freqency;
+    encoder_audio_format_t audio_format;
+    u8* audio_data;
+    size_t audio_byte_count;
 
     const char save_directory[256];
 } encoder_t;
@@ -39,8 +39,8 @@ void encoder_create(encoder_t* encoder, encoder_type_t type);
 void encoder_destroy(encoder_t* encoder);
 
 void encoder_prepare_video(encoder_t* encoder, u32 width, u32 height);
-void encoder_prepare_sound(encoder_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format);
+void encoder_prepare_audio(encoder_t* encoder, u32 channelCount, size_t sampleCount, encoder_audio_format_t format);
 void encoder_flush_video(encoder_t* encoder);
-void encoder_flush_sound(encoder_t* encoder);
+void encoder_flush_audio(encoder_t* encoder);
 
-size_t get_sound_format_size(encoder_sound_format_t format);
+size_t get_audio_format_size(encoder_audio_format_t format);

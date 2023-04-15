@@ -41,11 +41,11 @@ void encoder_create(encoder_t* encoder, encoder_type_t type)
     encoder->video_data = NULL;
     encoder->video_frame_count = 0;
     encoder->video_row_stride = 0;
-    encoder->sound_channels = 2;
-    encoder->sound_freqency = 48000;
-    encoder->sound_format = ENCODER_SOUND_FORMAT_PCM_F32;
-    encoder->sound_data = NULL;
-    encoder->sound_byte_count = 0;
+    encoder->audio_channels = 2;
+    encoder->audio_freqency = 48000;
+    encoder->audio_format = ENCODER_AUDIO_FORMAT_PCM_F32;
+    encoder->audio_data = NULL;
+    encoder->audio_byte_count = 0;
 
     // Create a directory for the recording
     time_t t = time(NULL);
@@ -96,15 +96,15 @@ void encoder_prepare_video(encoder_t* encoder, u32 width, u32 height)
     }
 }
 
-void encoder_prepare_sound(encoder_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format)
+void encoder_prepare_audio(encoder_t* encoder, u32 channelCount, size_t sampleCount, encoder_audio_format_t format)
 {
     switch (encoder->type)
     {
     case ENCODER_TYPE_QOI_PCM:
-        encoder_qoi_pcm_prepare_sound((encoder_qoi_pcm_t*)encoder, channelCount, sampleCount, format);
+        encoder_qoi_pcm_prepare_audio((encoder_qoi_pcm_t*)encoder, channelCount, sampleCount, format);
         break;
     case ENCODER_TYPE_FFMPEG:
-        encoder_ffmpeg_prepare_sound((encoder_ffmpeg_t*)encoder, channelCount, sampleCount, format);
+        encoder_ffmpeg_prepare_audio((encoder_ffmpeg_t*)encoder, channelCount, sampleCount, format);
         break;
     }
 }
@@ -121,29 +121,29 @@ void encoder_flush_video(encoder_t* encoder)
         break;
     }
 }
-void encoder_flush_sound(encoder_t* encoder)
+void encoder_flush_audio(encoder_t* encoder)
 {
     switch (encoder->type)
     {
     case ENCODER_TYPE_QOI_PCM:
-        encoder_qoi_pcm_flush_sound((encoder_qoi_pcm_t*)encoder);
+        encoder_qoi_pcm_flush_audio((encoder_qoi_pcm_t*)encoder);
         break;
     case ENCODER_TYPE_FFMPEG:
-        encoder_ffmpeg_flush_sound((encoder_ffmpeg_t*)encoder);
+        encoder_ffmpeg_flush_audio((encoder_ffmpeg_t*)encoder);
         break;
     }
 }
 
-size_t get_sound_format_size(encoder_sound_format_t format)
+size_t get_audio_format_size(encoder_audio_format_t format)
 {
     switch (format)
     {
-    case ENCODER_SOUND_FORMAT_PCM_S16:
+    case ENCODER_AUDIO_FORMAT_PCM_S16:
         return sizeof(i16);
-    case ENCODER_SOUND_FORMAT_PCM_F32:
+    case ENCODER_AUDIO_FORMAT_PCM_F32:
         return sizeof(f32);
     }
 
-    ERROR("Invalid sound format: %i", format);
+    ERROR("Invalid audio format: %i", format);
     return -1;
 }

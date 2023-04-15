@@ -37,19 +37,19 @@ typedef struct encoder_ffmpeg_t
     u32 video_frame_count;
     u32 video_row_stride;
 
-    u32 sound_channels;
-    u32 sound_freqency;
-    encoder_sound_format_t sound_format;
-    u8* sound_data;
-    size_t sound_byte_count;
+    u32 audio_channels;
+    u32 audio_freqency;
+    encoder_audio_format_t audio_format;
+    u8* audio_data;
+    size_t audio_byte_count;
 
     const char save_directory[256];
 
-    u32 sound_data_channels;
-    u32 sound_data_samples;
-    encoder_sound_format_t sound_data_format;
-    size_t sound_data_size;
-    size_t sound_data_buffer_size;
+    u32 audio_data_channels;
+    u32 audio_data_samples;
+    encoder_audio_format_t audio_data_format;
+    size_t audio_data_size;
+    size_t audio_data_buffer_size;
 
     AVFormatContext* format_ctx;
     bool has_video;
@@ -62,6 +62,6 @@ void encoder_ffmpeg_create(encoder_ffmpeg_t* encoder);
 void encoder_ffmpeg_destroy(encoder_ffmpeg_t* encoder);
 
 void encoder_ffmpeg_prepare_video(encoder_ffmpeg_t* encoder, u32 width, u32 height);
-void encoder_ffmpeg_prepare_sound(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_sound_format_t format);
+void encoder_ffmpeg_prepare_audio(encoder_ffmpeg_t* encoder, u32 channelCount, size_t sampleCount, encoder_audio_format_t format);
 void encoder_ffmpeg_flush_video(encoder_ffmpeg_t* encoder);
-void encoder_ffmpeg_flush_sound(encoder_ffmpeg_t* encoder);
+void encoder_ffmpeg_flush_audio(encoder_ffmpeg_t* encoder);

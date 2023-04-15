@@ -1,4 +1,4 @@
-#ifdef DEPRECATED_SOUND_PULSEAUDIO
+#ifdef DEPRECATED_AUDIO_PULSEAUDIO
 
 /*
 Modified to fit this project needs. Original from https://github.com/jbwong05/obs-pulseaudio-app-capture
@@ -164,4 +164,4 @@ int_fast32_t pulse_subscribe_sink_input_events(pa_context_subscribe_cb_t cb, voi
 }
 #endif
 
-#endif // DEPRECATED_SOUND_PULSEAUDIO
+#endif // DEPRECATED_AUDIO_PULSEAUDIO

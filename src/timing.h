@@ -12,11 +12,11 @@ bool timing_is_running();
 void timing_next_frame();
 
 void timing_mark_video_ready();
-void timing_mark_sound_done();
+void timing_mark_audio_done();
 void timing_video_finished();
-void timing_sound_finished();
+void timing_audio_finished();
 bool timing_is_video_ready();
-bool timing_is_sound_done();
+bool timing_is_audio_done();
 
 bool timing_is_realtime_frame_done();
 

@@ -18,16 +18,16 @@ void shutdown_encoder();
 // video_opengl_x11.c
 void init_video_opengl_x11();
 
-// sound_fmod.c
-void init_sound_fmod();
-void shutdown_sound_fmod();
+// audio_fmod.c
+void init_audio_fmod();
+void shutdown_audio_fmod();
 
-#ifdef DEPRECATED_SOUND_PULSEAUDIO
-    // sound_pulseaudio.c
-    void init_sound_pulseaudio();
-    void shutdown_sound_pulseaudio();
-    bool is_shutdown_done_sound_pulseaudio();
-#endif // DEPRECATED_SOUND_PULSEAUDIO
+#ifdef DEPRECATED_AUDIO_PULSEAUDIO
+    // audio_pulseaudio.c
+    void init_audio_pulseaudio();
+    void shutdown_audio_pulseaudio();
+    bool is_shutdown_done_audio_pulseaudio();
+#endif // DEPRECATED_AUDIO_PULSEAUDIO
 
 // timing_linux.c
 void init_timing_linux();

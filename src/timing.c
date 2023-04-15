@@ -20,10 +20,10 @@ static bool use_extension_frames = false;
 static i32 extension_frames = 0;
 
 static bool videoReady = false;
-static bool soundDone = false;
+static bool audioDone = false;
 
 static bool video_finished = false;
-static bool sound_finished = false;
+static bool audio_finished = false;
 static bool pending_finish = false;
 
 // .NET Core
@@ -78,14 +78,14 @@ void timing_start()
     currentTimestamp = -1;
     currentRealTimestamp = -1;
     videoReady = false;
-    soundDone = false;
+    audioDone = false;
 }
 
 void timing_stop()
 {
     INFO("Recording stopped");
     video_finished = false;
-    sound_finished = false;
+    audio_finished = false;
     pending_finish = true;
     fixedFPS = false;
 }
@@ -104,10 +104,10 @@ void timing_next_frame()
     currentTimestamp += timestep_inc;
     currentRealTimestamp = get_current_timestamp();
 
-    // Order is important here, since clearing sound first might cause a race condition,
-    // when first wait for sound clear and than for video ready in another thread.
+    // Order is important here, since clearing audio first might cause a race condition,
+    // when first wait for audio clear and than for video ready in another thread.
     videoReady = false;
-    soundDone = false;
+    audioDone = false;
 
     if (use_extension_frames)
     {
@@ -127,19 +127,19 @@ bool timing_is_first_frame() { return currentFrame == 0; }
 bool timing_is_running() { return fixedFPS; }
 
 void timing_mark_video_ready() { videoReady = true; }
-void timing_mark_sound_done() { soundDone = true; }
+void timing_mark_audio_done() { audioDone = true; }
 
 static void end_encoding() {
     video_finished = false;
-    sound_finished = false;
+    audio_finished = false;
     pending_finish = false;
     encoder_destroy(encoder_get_current()); 
 }
-void timing_video_finished() { video_finished = true; if (pending_finish && sound_finished) end_encoding(); }
-void timing_sound_finished() { sound_finished = true; if (pending_finish && video_finished) end_encoding(); }
+void timing_video_finished() { video_finished = true; if (pending_finish && audio_finished) end_encoding(); }
+void timing_audio_finished() { audio_finished = true; if (pending_finish && video_finished) end_encoding(); }
 
 bool timing_is_video_ready() { return videoReady; }
-bool timing_is_sound_done() { return soundDone; }
+bool timing_is_audio_done() { return audioDone; }
 
 bool timing_is_realtime_frame_done()
 {

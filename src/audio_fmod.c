@@ -42,7 +42,7 @@ static i32 total_recoded_samples_error = 0;
 static i32 target_recorded_samples = 0;
 static i32 recorded_samples = 0;
 
-static bool allow_sound_capture = false;
+static bool allow_audio_capture = false;
 
 FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer, f32* outBuffer, u32 length, i32 inChannels, i32* outChannels) 
 {
@@ -81,16 +81,16 @@ FMOD_RESULT F_CALLBACK dsp_read_callback(FMOD_DSP_STATE* dspState, f32* inBuffer
     }
 
     if (!timing_is_running()) {
-        timing_sound_finished();
+        timing_audio_finished();
         return FMOD_OK;
     }
-    while(timing_is_running() && !allow_sound_capture);
+    while(timing_is_running() && !allow_audio_capture);
     if (!timing_is_running()) return FMOD_OK;
 
     encoder_t* encoder = encoder_get_current();
-    encoder_prepare_sound(encoder, inChannels, length, ENCODER_SOUND_FORMAT_PCM_F32);
-    memcpy(encoder->sound_data, inBuffer, inChannels * length * sizeof(f32));
-    encoder_flush_sound(encoder);
+    encoder_prepare_audio(encoder, inChannels, length, ENCODER_AUDIO_FORMAT_PCM_F32);
+    memcpy(encoder->audio_data, inBuffer, inChannels * length * sizeof(f32));
+    encoder_flush_audio(encoder);
 
     recorded_samples += length;
 
@@ -139,25 +139,25 @@ FMOD_RESULT hook_FMOD_System_release(FMOD_SYSTEM* system)
     return result;
 }
 
-static bool run_sound_worker = true;
-static pthread_t sound_worker_thread = (pthread_t)NULL;
+static bool run_audio_worker = true;
+static pthread_t audio_worker_thread = (pthread_t)NULL;
 
-static bool sound_paused = false;
-static f32 sound_volume = -1;
+static bool audio_paused = false;
+static f32 audio_volume = -1;
 
 // NOTE: This thread might be a bit difficult to understand since it communicates over timing.h with the video capture.
 //       It's probably a good idea to look at a video capture implemenation, for example video_opengl_x11.c, too.
-static void* sound_worker(void* _)
+static void* audio_worker(void* _)
 {
-    TRACE("Started FMOD sound thread");
+    TRACE("Started FMOD audio thread");
 
-    while (run_sound_worker)
+    while (run_audio_worker)
     {
         if (!timing_is_running()) continue;
 
         // Wait until the next frame is started first
-        while (timing_is_running() && run_sound_worker && timing_is_sound_done());
-        while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
+        while (timing_is_running() && run_audio_worker && timing_is_audio_done());
+        while (timing_is_running() && run_audio_worker && !timing_is_video_ready());
 
         // Wait a frame to sync again with the video
         if (total_recoded_samples_error >= target_recorded_samples)
@@ -165,30 +165,30 @@ static void* sound_worker(void* _)
             total_recoded_samples_error -= target_recorded_samples;
             
             // The next frame might not've started yet
-            while (timing_is_running() && run_sound_worker && timing_is_sound_done());
+            while (timing_is_running() && run_audio_worker && timing_is_audio_done());
             // Since we skip the frame we're already done
-            timing_mark_sound_done();
-            while (timing_is_running() && run_sound_worker && !timing_is_video_ready());
+            timing_mark_audio_done();
+            while (timing_is_running() && run_audio_worker && !timing_is_video_ready());
 
             continue;
         }
         
         // Wait for data
-        allow_sound_capture = true;
-        while (timing_is_running() && run_sound_worker && recorded_samples < target_recorded_samples);
-        allow_sound_capture = false;
+        allow_audio_capture = true;
+        while (timing_is_running() && run_audio_worker && recorded_samples < target_recorded_samples);
+        allow_audio_capture = false;
         // Usually we record more than one frame of data
         total_recoded_samples_error += recorded_samples - target_recorded_samples;
         recorded_samples = 0;
 
-        timing_mark_sound_done();
+        timing_mark_audio_done();
     }
 
-    TRACE("Stopped FMOD sound thread");
+    TRACE("Stopped FMOD audio thread");
     return NULL;
 }
 
-void init_sound_fmod()
+void init_audio_fmod()
 {
     hook_symbol(hook_FMOD_System_init, (void**)&orig_FMOD_System_init, "_ZN4FMOD6System4initEijPv");
     hook_symbol(hook_FMOD_System_release, (void**)&orig_FMOD_System_release, "_ZN4FMOD6System7releaseEv");
@@ -202,16 +202,16 @@ void init_sound_fmod()
 
     target_recorded_samples = 48000 / settings_fps();
 
-    run_sound_worker = true;
-    pthread_create(&sound_worker_thread, NULL, sound_worker, NULL);
+    run_audio_worker = true;
+    pthread_create(&audio_worker_thread, NULL, audio_worker, NULL);
 }
 
-void shutdown_sound_fmod()
+void shutdown_audio_fmod()
 {
-    run_sound_worker = false;
+    run_audio_worker = false;
     
-    if (sound_worker_thread)
-        pthread_join(sound_worker_thread, NULL);
+    if (audio_worker_thread)
+        pthread_join(audio_worker_thread, NULL);
 }
 
 // libfmod.so (SHA1: 043c7a0c10705679f29f42b0f44e51245e7f8b65)

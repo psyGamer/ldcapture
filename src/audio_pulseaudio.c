@@ -1,4 +1,4 @@
-#ifdef DEPRECATED_SOUND_PULSEAUDIO
+#ifdef DEPRECATED_AUDIO_PULSEAUDIO
 
 #include "base.h"
 #include "timing.h"
@@ -626,7 +626,7 @@ static bool init2 = false;
 static bool shut1 = false;
 static bool shut2 = false;
 
-static void sound_pulseaudio_update(void* userdata)
+static void audio_pulseaudio_update(void* userdata)
 {
     if (init2) return;
 
@@ -704,7 +704,7 @@ static void sound_pulseaudio_update(void* userdata)
     init2 = true;
 }
 
-void init_sound_pulseaudio()
+void init_audio_pulseaudio()
 {
     TRACE("-------------");
     if (!init1)
@@ -724,11 +724,11 @@ void init_sound_pulseaudio()
         init1 = true;
     }
     TRACE("calling update");
-    sound_pulseaudio_update(gdata);
+    audio_pulseaudio_update(gdata);
     TRACE("finished updating from create");
 }
 
-void shutdown_sound_pulseaudio()
+void shutdown_audio_pulseaudio()
 {
     TRACE("Trying to shut down");
     if (shut1 || shut2) return;
@@ -774,9 +774,9 @@ void shutdown_sound_pulseaudio()
     TRACE("Successful shut down");
 }
 
-bool is_shutdown_done_sound_pulseaudio()
+bool is_shutdown_done_audio_pulseaudio()
 {
     return shut2;
 }
 
-#endif // DEPRECATED_SOUND_PULSEAUDIO
+#endif // DEPRECATED_AUDIO_PULSEAUDIO

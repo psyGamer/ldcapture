@@ -74,7 +74,7 @@ SYM_HOOK(void, glXSwapBuffers, (Display* dpy, GLXDrawable drawable),
     if (timing_is_running())
     {
         timing_mark_video_ready();
-        while (timing_is_running() && !timing_is_first_frame() && !timing_is_sound_done());
+        while (timing_is_running() && !timing_is_first_frame() && !timing_is_audio_done());
 
         timing_next_frame();
         capture_frame(dpy);
