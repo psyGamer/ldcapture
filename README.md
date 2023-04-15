@@ -21,7 +21,8 @@ Currently there are no prebuild binaries, so you'll have to compile from source.
 
 ### Linux
 
-`$ LD_PRELOAD="path/to/ldcapture.so" ./your-program`
+Use the following command to start you program with ldcapture:
+`LD_PRELOAD="path/to/ldcapture.so" ./your-program`
 
 ## Controling ldcapture from the target application
 
@@ -74,15 +75,20 @@ Currently only Linux with OpenGL X11 and FMOD is supported.
 
 ## Using ldcapture with Celeste
 
-If you want to use ldcapture with Celeste specifically you should use the [.NET Core version of Everest](https://github.com/Popax21/Everest) since the .NET Framework version causes some issues with performance and audio desyncs.
+You should install the [ldcapture-CelesteInterop](https://github.com/psyGamer/ldcapture-CelesteInterop) mod, which provides easy access to the API functions via the debug console.
 
-Additionally, you should install the [ldcapture-CelesteInterop](https://github.com/Popax21/Everest) mod, which provides easy access to the API functions via the debug console.
+Additionally you might also want to consider installing the [.NET Core version of Everest](https://github.com/Popax21/Everest), since it greatly improves performance. **NOTE:** This version is still in development and **not stable**. Use it at you own risk.
 
 ### Linux
 
-When starting Celeste, you should specify the `LD_LIBRARY_PATH` to avoid Celeste restarting, which might cause issues:
+If you are not using [ldcapture-CelesteInterop](https://github.com/psyGamer/ldcapture-CelesteInterop), use the following command:
 
-`$ LD_PRELOAD="path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux" ./Celeste`
+`LD_PRELOAD="path/to/ldcapture.so" ./Celeste`
+
+If you are using [ldcapture-CelesteInterop](https://github.com/psyGamer/ldcapture-CelesteInterop), use the following commands depending on your .NET platform. If you don't know what this means, use the ".NET Framework" command.
+
+.NET Framework: `LD_PRELOAD="/path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64:" ./Celeste`
+.NET Core: `LD_PRELOAD="/path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux:" ./Celeste`
 
 ## Suport
 
