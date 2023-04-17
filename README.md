@@ -17,11 +17,10 @@ The resulting shared library is located under `./bin/ldcapture.so`
 
 ## Usage
 
-Currently there are no prebuild binaries, so you'll have to compile from source.
-
 ### Linux
 
 Use the following command to start you program with ldcapture:
+
 `LD_PRELOAD="path/to/ldcapture.so" ./your-program`
 
 ## Controling ldcapture from the target application
@@ -88,6 +87,7 @@ If you are not using [ldcapture-CelesteInterop](https://github.com/psyGamer/ldca
 If you are using [ldcapture-CelesteInterop](https://github.com/psyGamer/ldcapture-CelesteInterop), use the following commands depending on your .NET platform. If you don't know what this means, use the ".NET Framework" command.
 
 .NET Framework: `LD_PRELOAD="/path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64:" ./Celeste`
+
 .NET Core: `LD_PRELOAD="/path/to/ldcapture.so" LD_LIBRARY_PATH="./lib64-linux:" ./Celeste`
 
 ## Suport
